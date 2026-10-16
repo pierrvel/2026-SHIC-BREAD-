@@ -1,0 +1,5 @@
+# Python 3.10+. For Pi Camera V2, install python3-picamera2 through Raspberry Pi OS apt.
+opencv-python==4.11.0.86
+numpy==2.2.6
+firebase-admin==6.9.0
+Pillow==11.2.1

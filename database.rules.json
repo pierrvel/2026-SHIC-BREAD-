@@ -1,0 +1,28 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "config": {
+      ".read": true,
+      ".write": "auth != null && auth.token.admin === true && newData.exists()",
+      ".validate": "newData.hasChildren(['threshold', 'slots'])",
+      "threshold": {
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 255"
+      },
+      "slots": {
+        ".validate": "newData.hasChildren()",
+        "$slot": {
+          ".validate": "$slot.matches(/^slot_[A-Za-z0-9_-]+$/) && newData.hasChildren(['name', 'x', 'y', 'w', 'h'])",
+          "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+          "x": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 8192 && newData.val() % 1 === 0" },
+          "y": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 8192 && newData.val() % 1 === 0" },
+          "w": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 8192 && newData.val() % 1 === 0" },
+          "h": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 8192 && newData.val() % 1 === 0" },
+          "$other": { ".validate": false }
+        }
+      },
+      "$other": { ".validate": false }
+    },
+    "status": { ".read": true, ".write": false }
+  }
+}
