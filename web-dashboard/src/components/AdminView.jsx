@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { isMock, login, logout, resetMock, saveConfig, subscribeAdmin } from '../firebase';
+import { isMock, isLocal, login, logout, resetMock, saveConfig, subscribeAdmin, calibrateEmpty, captureNow } from '../firebase';
 import { stableStringify, validateConfig } from '../config';
 import { freshMockData } from '../mockData';
 import sampleVendingPhoto from '../assets/sample_vending.jpg';
 
-export default function AdminView({ config, loading, error: dataError }) {
+export default function AdminView({ config, health, loading, error: dataError }) {
   const [session, setSession] = useState({ ready: false, admin: false });
   const [draft, setDraft] = useState(null);
   const [baseline, setBaseline] = useState(null);
@@ -16,11 +16,17 @@ export default function AdminView({ config, loading, error: dataError }) {
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emptyConfirmed, setEmptyConfirmed] = useState(false);
   const uploadUrl = useRef(null);
   const dirty = !!draft && stableStringify(draft) !== stableStringify(baseline);
   const remoteChanged = baseline && stableStringify(config) !== stableStringify(baseline);
 
   useEffect(() => subscribeAdmin(setSession), []);
+  useEffect(() => {
+    if (isLocal && session.admin && health?.frame_version) {
+      setPreview(`/api/frame.jpg?v=${health.frame_version}`);
+    }
+  }, [session.admin, health?.frame_version]);
   useEffect(() => () => { if (uploadUrl.current) URL.revokeObjectURL(uploadUrl.current); }, []);
   useEffect(() => {
     if (!dirty) {
@@ -64,8 +70,24 @@ export default function AdminView({ config, loading, error: dataError }) {
     event.preventDefault();
     setBusy(true); setError('');
     try { await login(email, password); setPassword(''); }
-    catch { setError('로그인에 실패했습니다. 계정 정보와 로그인 제공자 설정을 확인해 주세요.'); }
+    catch (cause) { setError(isLocal ? cause.message : '로그인에 실패했습니다. 계정 정보와 로그인 제공자 설정을 확인해 주세요.'); }
     finally { setBusy(false); }
+  }
+
+  async function calibrate() {
+    if (!emptyConfirmed || dirty) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await calibrateEmpty();
+      setEmptyConfirmed(false);
+      setMessage('새 사진을 촬영해 빈 칸 기준으로 저장했습니다. 다음 판별 결과를 확인해 주세요.');
+    } catch (cause) { setError(cause.message); }
+    finally { setBusy(false); }
+  }
+
+  async function capture() {
+    try { await captureNow(); setMessage('새 촬영을 요청했습니다. 사진이 곧 갱신됩니다.'); }
+    catch (cause) { setError(cause.message); }
   }
 
   function changePhoto(event) {
@@ -96,11 +118,11 @@ export default function AdminView({ config, loading, error: dataError }) {
   if (!session.ready) return <div className="empty-state">관리자 권한을 확인하는 중…</div>;
   if (!session.admin) return <section className="login-panel">
     <div className="section-kicker">ADMIN ACCESS</div><h1>관리자 로그인</h1>
-    <p>칸 위치와 판별 기준값은 관리자 계정으로 수정할 수 있어요.</p>
+    <p>{isLocal ? '파이 터미널에 안내된 관리자 비밀번호 파일을 확인해 로그인하세요.' : '칸 위치와 판별 기준값은 관리자 계정으로 수정할 수 있어요.'}</p>
     {session.email && <div className="alert">이 계정에는 관리자 권한이 없습니다. 담당자에게 권한을 요청해 주세요.</div>}
     {error && <div className="alert error" role="alert">{error}</div>}
     <form onSubmit={signIn} className="login-form">
-      <label>이메일<input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+      {!isLocal && <label>이메일<input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>}
       <label>비밀번호<input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
       <button className="primary-button" disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
     </form>
@@ -112,6 +134,8 @@ export default function AdminView({ config, loading, error: dataError }) {
     <div className="admin-heading"><div><div className="section-kicker">MACHINE SETTINGS</div><h1>자판기 설정</h1><p>사진 위에서 칸을 선택하고, 촬영 원본 기준의 좌표를 입력하세요.</p></div>
       <div className="admin-account"><span>{session.email}</span>{!isMock && <button className="text-button" onClick={() => logout().catch(() => setError('로그아웃에 실패했습니다.'))}>로그아웃</button>}</div></div>
     {isMock && <div className="demo-notice"><span className="notice-symbol">i</span><p>로컬 데모 설정입니다. 기준값은 샘플 점수에 적용되며, ROI 변경에 따른 사진 재분석은 Python에서 실행하세요.</p></div>}
+    {isLocal && <div className="demo-notice"><span className="notice-symbol">i</span><p>{health?.sample ? '파이 샘플 모드입니다. 저장한 좌표와 기준값은 실제 Python 분석기에 적용됩니다. 실제 자판기 사진은 아닙니다.' : '파이 카메라에 직접 연결되어 있습니다. 칸 좌표를 저장하고, 모든 칸이 비었을 때 기준 사진을 촬영하세요.'}</p></div>}
+    {health?.message && <div className={`alert ${health.error ? 'error' : ''}`} role="status">{health.message}</div>}
     {(error || dataError) && <div className="alert error" role="alert">{error || dataError}</div>}
     {message && <div className="alert success" role="status">{message}</div>}
     {remoteChanged && dirty && <div className="alert">새 원격 설정이 있습니다. 현재 편집 내용과 충돌할 수 있습니다. <button type="button" className="text-button" onClick={loadLatest}>최신 설정 불러오기</button></div>}
@@ -120,7 +144,7 @@ export default function AdminView({ config, loading, error: dataError }) {
       <button className="primary-button" onClick={() => { setDraft(freshMockData().config); setBaseline(null); }}>기본 설정 만들기</button>
     </div> : <form onSubmit={submit}>
       <div className="admin-layout"><div className="editor-photo-panel">
-        <div className="panel-heading"><h2>칸 위치 미리보기</h2><label className="upload-button">사진 불러오기<input type="file" accept="image/jpeg,image/png,image/webp" onChange={changePhoto} /></label></div>
+        <div className="panel-heading"><h2>칸 위치 미리보기</h2>{isLocal ? <button type="button" className="secondary-button" onClick={capture}>지금 촬영</button> : <label className="upload-button">사진 불러오기<input type="file" accept="image/jpeg,image/png,image/webp" onChange={changePhoto} /></label>}</div>
         <div className="roi-preview">
           {preview ? <>
             <img src={preview} alt="자판기 전체 사진과 칸별 선택 영역" onLoad={(event) => setDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} onError={() => { setDimensions(null); setError('사진을 읽지 못했습니다. 다른 사진을 선택해 주세요.'); }} />
@@ -132,7 +156,14 @@ export default function AdminView({ config, loading, error: dataError }) {
             </svg>}
           </> : <div className="empty-photo">현장 카메라로 촬영한 전체 사진을 불러오세요.</div>}
         </div>
-        <p className="photo-caption">{dimensions ? `원본 ${dimensions.width} × ${dimensions.height}px · ` : ''}사진은 이 기기에서만 사용되며 DB에 업로드되지 않습니다.</p>
+        <p className="photo-caption">{dimensions ? `원본 ${dimensions.width} × ${dimensions.height}px · ` : ''}{isLocal ? '파이에서 촬영한 사진입니다. 이 사진에 맞춰 칸 위치를 조정하세요.' : '사진은 이 기기에서만 사용되며 DB에 업로드되지 않습니다.'}</p>
+        {isLocal && <div className="local-calibration">
+          <h3>빈 칸 기준 촬영</h3>
+          <p>카메라를 고정하고 자판기의 모든 칸을 비운 다음 촬영하세요. 기존 기준 사진은 백업한 뒤 갱신합니다.</p>
+          <label><input type="checkbox" checked={emptyConfirmed} onChange={(event) => setEmptyConfirmed(event.target.checked)} /> 모든 칸이 비어 있음을 확인했습니다</label>
+          <button type="button" className="primary-button" disabled={busy || !emptyConfirmed || dirty || !health?.camera_ready} onClick={calibrate}>현재 사진을 빈 칸 기준으로 촬영</button>
+          {dirty && <p>칸 위치 편집을 먼저 저장해 주세요.</p>}
+        </div>}
       </div>
       <div className="editor-controls"><div className="panel-heading"><h2>판별 설정</h2><span className="edited-badge">{dirty ? '저장 전' : '저장됨'}</span></div>
         <label>편집할 칸<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{Object.entries(draft.slots).map(([id, slot]) => <option key={id} value={id}>{slot.name}</option>)}</select></label>

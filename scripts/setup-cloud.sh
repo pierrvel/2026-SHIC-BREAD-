@@ -19,3 +19,4 @@ MOCK_MODE=true .venv/bin/python edge-pi/main.py --once
 npm --prefix web-dashboard ci --cache /tmp/school-bread-npm-cache --no-audit --no-fund
 npm --prefix web-dashboard run build
 npm --prefix web-dashboard run build:preview
+.venv/bin/python scripts/package-pi.py

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { subscribeConnection, subscribeNode } from './firebase';
+import { subscribeConnection, subscribeNode, subscribeHealth } from './firebase';
 
 export function useVending() {
   const [config, setConfig] = useState(null);
   const [status, setStatus] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [health, setHealth] = useState(null);
   const [loaded, setLoaded] = useState({ config: false, status: false });
   const [errors, setErrors] = useState({});
   useEffect(() => {
@@ -17,7 +18,8 @@ export function useVending() {
       setErrors((old) => ({ ...old, [path]: error.message }));
     }));
     removers.push(subscribeConnection(setConnected));
+    removers.push(subscribeHealth(setHealth));
     return () => removers.forEach((remove) => remove());
   }, []);
-  return { config, status, connected, loading: !loaded.config || !loaded.status, error: Object.values(errors).find(Boolean) };
+  return { config, status, health, connected, loading: !loaded.config || !loaded.status, error: Object.values(errors).find(Boolean) };
 }

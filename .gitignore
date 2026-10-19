@@ -1,4 +1,6 @@
 .venv/
+.venv-pi/
+.pi-data/
 __pycache__/
 *.pyc
 .pytest_cache/

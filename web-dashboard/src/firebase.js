@@ -3,14 +3,17 @@ import { getDatabase, onValue, ref, runTransaction } from 'firebase/database';
 import { getAuth, onIdTokenChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { freshMockData, MOCK_STORAGE_KEY, simulateThreshold } from './mockData';
 import { stableStringify, validateConfig } from './config';
+import { subscribeLocal, subscribeLocalAdmin, loginLocal, logoutLocal, saveLocalConfig, calibrateLocal, localRequest } from './local';
 
 const env = import.meta.env;
-export const isMock = env.VITE_MOCK_MODE === 'true' || (env.VITE_MOCK_MODE !== 'false' && !env.VITE_FIREBASE_API_KEY);
+export const isLocal = window.__BREAD_RUNTIME__?.mode === 'local';
+export const isMock = !isLocal && (env.VITE_MOCK_MODE === 'true' || (env.VITE_MOCK_MODE !== 'false' && !env.VITE_FIREBASE_API_KEY));
+export const isSample = isMock || (isLocal && window.__BREAD_RUNTIME__.sample === true);
 let database;
 let auth;
 let initializationError;
 
-if (!isMock) {
+if (!isMock && !isLocal) {
   const keys = ['API_KEY', 'AUTH_DOMAIN', 'DATABASE_URL', 'PROJECT_ID', 'APP_ID'];
   if (keys.some((key) => !env[`VITE_FIREBASE_${key}`])) {
     initializationError = new Error('Firebase 설정이 누락되었습니다. .env.local을 확인해 주세요.');
@@ -58,6 +61,7 @@ if (isMock) window.addEventListener('storage', (event) => {
 
 export function subscribeNode(path, callback, onError) {
   if (!['config', 'status'].includes(path)) throw new Error('Unsupported database path');
+  if (isLocal) return subscribeLocal(path, callback, onError);
   if (isMock) {
     const listener = () => callback(readMock()[path]);
     mockListeners.add(listener);
@@ -74,6 +78,7 @@ export function subscribeNode(path, callback, onError) {
 }
 
 export function subscribeConnection(callback) {
+  if (isLocal) return subscribeLocal('connected', callback);
   if (isMock) { callback(true); return () => {}; }
   if (initializationError) { callback(false); return () => {}; }
   return onValue(ref(database, '.info/connected'), (snapshot) => callback(snapshot.val() === true), () => callback(false));
@@ -81,6 +86,7 @@ export function subscribeConnection(callback) {
 
 export async function saveConfig(config, expectedConfig) {
   validateConfig(config);
+  if (isLocal) return saveLocalConfig(config, expectedConfig);
   const conflict = '다른 관리자가 설정을 변경했습니다. 최신 설정을 불러온 뒤 다시 저장해 주세요.';
   if (isMock) {
     const data = readMock();
@@ -112,6 +118,7 @@ export async function saveConfig(config, expectedConfig) {
 }
 
 export function subscribeAdmin(callback) {
+  if (isLocal) return subscribeLocalAdmin(callback);
   if (isMock) { callback({ ready: true, admin: true, email: '로컬 데모 관리자' }); return () => {}; }
   if (initializationError) { callback({ ready: true, admin: false }); return () => {}; }
   let sequence = 0;
@@ -128,10 +135,30 @@ export function subscribeAdmin(callback) {
 }
 
 export async function login(email, password) {
+  if (isLocal) return loginLocal(password);
   if (initializationError) throw initializationError;
   await signInWithEmailAndPassword(auth, email, password);
 }
-export async function logout() { if (auth) await signOut(auth); }
+export async function logout() {
+  if (isLocal) return logoutLocal();
+  if (auth) await signOut(auth);
+}
+
+export function subscribeHealth(callback) {
+  if (isLocal) return subscribeLocal('meta', callback);
+  callback(null);
+  return () => {};
+}
+
+export async function calibrateEmpty() {
+  if (!isLocal) throw new Error('파이 로컬 실행 모드에서 사용할 수 있습니다.');
+  return calibrateLocal();
+}
+
+export async function captureNow() {
+  if (!isLocal) throw new Error('파이 로컬 실행 모드에서 사용할 수 있습니다.');
+  return localRequest('capture', {});
+}
 
 export function resetMock() {
   if (!isMock) return;

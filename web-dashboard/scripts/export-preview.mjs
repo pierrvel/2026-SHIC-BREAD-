@@ -1,4 +1,4 @@
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 
 const marker = '<!-- Generated offline demo: npm --prefix web-dashboard run build:preview -->';
 const target = new URL('../../index.html', import.meta.url);
@@ -20,4 +20,8 @@ if (/<script\b[^>]*\bsrc\s*=|<link\b[^>]*\brel=["']stylesheet/i.test(html)) {
 const temporary = new URL('../../index.html.tmp', import.meta.url);
 await writeFile(temporary, `${marker}\n${html}`, 'utf8');
 await rename(temporary, target);
+const piDirectory = new URL('../../edge-pi/web/', import.meta.url);
+await mkdir(piDirectory, { recursive: true });
+await writeFile(new URL('index.html', piDirectory), `${marker}\n${html}`, 'utf8');
 console.log('Created standalone demo: /workspace/2026-SHIC-BREAD-/index.html');
+console.log('Created prebuilt Pi dashboard: edge-pi/web/index.html (no npm needed on Pi)');

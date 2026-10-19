@@ -2,6 +2,38 @@
 
 라즈베리 파이에서 30초마다 촬영하고, 빈 칸과의 평균 채도 차이로 **재고 있음 / 품절**을 판별합니다. React는 Firebase Realtime Database를 직접 구독합니다. 별도 상시 백엔드, 유료 AI API, 상품명 인식 모델은 사용하지 않습니다.
 
+**파이에서 지금 바로 실행하려면 아래의 로컬 실행 모드를 사용하세요.** 파이가 카메라·분석기·웹 서버를 함께 실행합니다. 웹 파일이 포함되어 있어 파이에 Node.js/npm을 설치하거나 Firebase 프로젝트를 먼저 만들 필요가 없습니다. 인터넷 공개 서비스는 기존 Firebase 모드를 사용하고, 로컬 모드는 같은 네트워크에서 장치 간 통신이 가능한 환경의 구동·현장 보정에 사용합니다.
+
+1. 기존 저장소를 받은 파이 터미널에서 실행합니다. Raspberry Pi OS 64비트, Python 3.10 이상이 기준입니다.
+
+   ```bash
+   cd ~/school-bread
+   git pull --ff-only
+   bash scripts/run-pi.sh
+   ```
+
+   필요한 OS 패키지가 없으면 스크립트가 `apt`로 설치합니다. 관리자 암호가 요청될 수 있습니다. 카메라용 환경은 `.venv-pi`에 분리해 기존 `.venv`와 pip NumPy를 건드리지 않습니다. 기본값은 **실제 Picamera2 카메라**이며 카메라 실패 시 샘플로 바뀌지 않습니다. USB 카메라는 `--camera-backend opencv`를 추가하세요.
+
+2. 다른 터미널에서 `hostname -I`로 파이의 IP를 확인하고 같은 네트워크의 PC/휴대폰 브라우저에서 `http://파이IP:8000`을 엽니다. 예시의 `파이IP`는 실제 주소로 바꾸세요. 이것은 파이의 LAN 주소이며 Codex 파일 미리보기를 사용하지 않습니다.
+
+3. 관리자 화면의 비밀번호는 파이에서 아래 명령으로 확인합니다. 자동 생성된 비밀번호는 저장소에 들어가지 않고, 서버 로그에도 값이 출력되지 않습니다.
+
+   ```bash
+   cat ~/.local/share/school-bread/admin-password
+   ```
+
+4. 관리자에서 현재 촬영 사진을 보고 칸 좌표를 저장하세요. 자판기의 **모든 칸이 비었을 때** 확인란을 체크하고 **현재 사진을 빈 칸 기준으로 촬영**을 누릅니다. 이 동작은 새 프레임을 촬영하며 기존 기준은 백업합니다. 보정 전에는 재고를 미확인으로 표시합니다. 보정 후 상품을 넣으면 다음 촬영 때 분석 결과와 WebP 사진이 갱신됩니다. **지금 촬영** 버튼으로 촬영을 앞당길 수 있습니다.
+
+5. 종료는 Ctrl+C입니다. 기본 주기는 30초, 웹 포트는 8000입니다. 예: `bash scripts/run-pi.sh --port 8080 --interval 10`. 설정·판별 결과·기준 사진은 `~/.local/share/school-bread/`에 유지되고 다음 실행에 재사용됩니다. 서버를 재시작하면 이전 결과를 현재 재고처럼 표시하지 않고 새 판별을 기다립니다. SSH 세션을 종료하면 프로그램이 종료될 수 있으므로 실행 중에는 터미널을 유지하세요.
+
+카메라가 없는 PC에서 전체 분석·웹 연동을 확인하려면 명시적으로 `bash scripts/run-pi.sh --sample`을 실행합니다. 샘플 표시는 브라우저 임의 점수가 아니라 Python이 합성 사진을 분석한 결과입니다. UI에서 샘플임을 표시합니다. **실제 장비 보정 데이터와 분리**하려면 `--data-dir "$HOME/.local/share/school-bread-sample"`도 지정하세요.
+
+Git 대신 다운로드하려면 저장소의 `school-bread-pi.zip`을 받아 압축을 풀고, 그 안의 `school-bread-pi` 폴더에서 `bash scripts/run-pi.sh`를 실행해도 됩니다. 이 ZIP에는 가상환경·서비스 계정 키·관리자 비밀번호가 포함되지 않습니다.
+
+로컬 학생용 읽기 API는 공개이고 설정 쓰기·전체 사진·보정·즉시 촬영은 관리자 세션이 필요합니다. 로그인은 비밀번호, HttpOnly/SameSite 세션 쿠키, 시도 횟수 제한을 사용합니다. 로컬 API는 기존 `config`/`status` 스키마를 유지하며, 장치 상태만 별도 `meta` 응답으로 전달합니다. Firebase 배포에서는 기존 SDK 실시간 리스너와 Firebase 관리자 인증을 그대로 사용합니다.
+
+개발자가 UI를 수정한 경우 `npm --prefix web-dashboard run build:preview`로 `edge-pi/web/index.html`을 갱신한 뒤 `python3 scripts/package-pi.py`로 Pi ZIP을 다시 만듭니다. Node/npm은 이 빌드 단계에만 필요합니다.
+
 ```text
 edge-pi/          Python 3.10+, OpenCV 분석·카메라·Firebase Admin
 web-dashboard/    React 18, Vite, Tailwind CSS, Firebase JS SDK
@@ -135,6 +167,8 @@ npm run build
 ```bash
 python web-dashboard/tests/smoke.py
 ```
+
+로컬 런타임 HTTP/인증/분석 테스트는 Python 테스트 모음에 포함되어 있습니다. 전체 브라우저 검증은 별도의 일회용 데이터 폴더로 서버를 `--sample --interval 1 --data-dir /tmp/bread-test-data` 모드에서 띄운 다음, `BREAD_TEST_URL`에 테스트 서버 주소, `BREAD_TEST_DATA_DIR`에 그 폴더를 지정해 `python web-dashboard/tests/local.py`를 실행합니다. 이 검사는 자기 테스트용 샘플 파일을 변경하므로 실제 장비 데이터 폴더에 실행하지 마세요.
 
 단일 HTML 미리보기는 `python web-dashboard/tests/preview.py`로 별도 검증합니다. 이 검사는 서버 없이 `sandbox` iframe에 HTML을 넣고, 저장소 접근이 거부된 환경에서 사진 표시·필터·관리자 설정 적용·초기화가 작동하는지 확인합니다.
 

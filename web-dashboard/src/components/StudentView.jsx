@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { isMock } from '../firebase';
+import { isSample } from '../firebase';
 
 function Thumbnail({ source, name }) {
   const [failedSource, setFailedSource] = useState(null);
@@ -9,7 +9,7 @@ function Thumbnail({ source, name }) {
     : <div className="missing-photo"><span aria-hidden="true">▧</span>사진 준비 중</div>;
 }
 
-export default function StudentView({ config, status, loading, error, connected }) {
+export default function StudentView({ config, status, health, loading, error, connected }) {
   const [filter, setFilter] = useState('all');
   const slots = Object.entries(config?.slots || {}).sort(([a], [b]) => a.localeCompare(b, 'ko', { numeric: true }));
   const stocked = slots.filter(([id]) => status?.slots?.[id]?.in_stock === true).length;
@@ -31,9 +31,10 @@ export default function StudentView({ config, status, loading, error, connected 
       </aside>
     </section>
 
-    {isMock && <div className="demo-notice"><span className="notice-symbol">i</span><p><strong>샘플로 둘러보는 중이에요.</strong> 합성 사진을 사용한 데모이며, 실제 자판기 재고가 아닙니다.</p><span className="demo-label">DEMO</span></div>}
+    {isSample && <div className="demo-notice"><span className="notice-symbol">i</span><p><strong>샘플로 둘러보는 중이에요.</strong> 합성 사진을 사용한 데모이며, 실제 자판기 재고가 아닙니다.</p><span className="demo-label">DEMO</span></div>}
+    {health?.message && <div className={`alert ${health.error ? 'error' : ''}`} role="status">{health.message}</div>}
     {error && <div className="alert error" role="alert">{error}</div>}
-    {!connected && !isMock && <div className="alert" role="status">연결이 끊겼습니다. 아래 사진은 마지막으로 수신한 정보이며, 현재 재고와 다를 수 있습니다.</div>}
+    {!connected && <div className="alert" role="status">연결이 끊겼습니다. 아래 사진은 마지막으로 수신한 정보이며, 현재 재고와 다를 수 있습니다.</div>}
 
     <section className="inventory" aria-labelledby="inventory-title">
       <div className="section-toolbar">
@@ -43,7 +44,7 @@ export default function StudentView({ config, status, loading, error, connected 
           <button className={filter === 'stock' ? 'selected' : ''} aria-pressed={filter === 'stock'} onClick={() => setFilter('stock')}>재고 있는 칸</button>
         </div>
       </div>
-      <div className="update-row"><span className={`connection-dot ${connected ? 'online' : ''}`} /><span>{isMock ? '샘플 판별 시각' : '마지막 재고 판별'} <time>{status?.updated_at || '아직 없음'}</time> (한국 시간)</span></div>
+      <div className="update-row"><span className={`connection-dot ${connected ? 'online' : ''}`} /><span>{isSample ? '샘플 판별 시각' : '마지막 재고 판별'} <time>{status?.updated_at || '아직 없음'}</time> (한국 시간)</span></div>
       {loading ? <div className="empty-state" role="status">자판기 정보를 불러오고 있어요…</div>
         : slots.length === 0 ? <div className="empty-state">등록된 칸이 없습니다. 관리자 화면에서 초기 설정을 확인해 주세요.</div>
           : visible.length === 0 ? <div className="empty-state">현재 재고가 확인된 칸이 없어요. 다음 입고를 기다려 주세요.</div>
