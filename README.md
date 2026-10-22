@@ -29,6 +29,14 @@
 
 느리면 `bash scripts/preview-camera.sh --width 640 --height 480 --fps 10`으로 낮춰 비교하세요. USB 카메라는 `--camera-backend opencv`를 추가하고 필요하면 `--camera-index 1`로 선택합니다. 카메라 연결 실패 시 합성 화면으로 바뀌지 않습니다. 개발용 합성 영상은 **명시적으로** `--sample`을 지정할 때만 사용하며 화면에도 합성임을 표시합니다. 여러 브라우저는 같은 카메라 프레임을 공유하며, 느린 연결에는 최신 프레임을 보냅니다.
 
+`Control FrameDurationLimits is not advertised by libcamera`가 나오면 FPS 제어를 지원하지 않는 카메라에 Pi 카메라용 제어가 요청된 것입니다. 특히 로그에 `MJPEG`가 보이고 USB 웹캠을 연결했다면 다음 명령으로 실행하세요.
+
+```bash
+bash scripts/preview-camera.sh --camera-backend opencv --width 640 --height 480 --fps 15
+```
+
+리본 케이블의 Camera Module V2라면 기본 Picamera2 모드를 사용합니다. 두 종류를 함께 연결한 경우 `rpicam-hello --list-cameras`의 `imx219` 번호를 `--camera-index`로 선택하세요. Picamera2의 카메라 번호와 OpenCV의 `/dev/videoN` 번호는 서로 다를 수 있습니다. 최신 실행기는 지원되는 제어만 적용하며, 하드웨어 FPS 제어가 없으면 장치 기본 촬영 속도로 캡처하고 송출 속도를 제한합니다. USB 장치가 선택한 실제 해상도·촬영 FPS는 화면에서 확인하세요. ZIP으로 설치했다면 업데이트된 ZIP을 다시 받으세요.
+
 파이 자체에서는 보이지만 다른 기기에서 안 보이면 같은 네트워크인지, IP가 맞는지, 게스트 와이파이의 기기 간 통신 차단이 켜져 있는지 확인하세요. 이 서버는 인증 없는 LAN 영상 확인용이므로 신뢰하는 네트워크에서 사용하고 인터넷으로 공개하지 마세요. 카메라가 중간에 끊어지면 상태를 확인한 뒤 프로그램을 다시 시작합니다.
 
 영상 확인 후 남은 순서는 **카메라 고정·CPL/반사 조정 → 빈 자판기 기준 촬영·ROI 설정 → 상품 넣기/빼기 비교 및 threshold 조정 → Firebase 연결 → 학생용 사이트 배포**입니다. 영상 확인용 해상도와 재고 분석기 촬영 해상도는 다를 수 있으므로 ROI는 분석기 화면에서 다시 설정하세요. 연속 CCTV 영상은 Firebase RTDB로 보내지 않습니다. 사이트에는 기존 설계대로 상태와 작은 상품 사진만 전송합니다.

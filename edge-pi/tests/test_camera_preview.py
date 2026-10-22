@@ -3,8 +3,9 @@ from pathlib import Path
 import sys
 import threading
 import time
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
@@ -13,6 +14,66 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from camera_preview import CameraSource, FrameStream, PreviewServer, SampleSource
+
+
+class CameraCompatibilityTests(unittest.TestCase):
+    def fake_camera(self, controls, pixel_format='RGB888'):
+        camera = MagicMock()
+        camera.camera_controls = controls
+        camera.create_video_configuration.side_effect = lambda **kwargs: {
+            **kwargs, 'controls': {'FrameDurationLimits': (33333, 33333),
+                                  'NoiseReductionMode': 1, **kwargs['controls']}}
+        camera.camera_configuration.return_value = {'main': {'format': pixel_format}}
+        return camera
+
+    def test_unadvertised_controls_removed_for_usb_mjpeg_and_colors_correct(self):
+        camera = self.fake_camera({}, 'MJPEG')
+        # Picamera2 decodes MJPEG with Pillow, returning RGB (red here).
+        camera.capture_array.return_value = np.full((8, 8, 3), (255, 0, 0), dtype=np.uint8)
+        with patch.dict(sys.modules, {'picamera2': SimpleNamespace(Picamera2=lambda index: camera)}):
+            source = CameraSource('picamera2', 640, 480, 15, 0)
+        self.assertEqual(camera.configure.call_args.args[0]['controls'], {})
+        self.assertEqual(source.read()[0, 0].tolist(), [0, 0, 255])
+        source.close()
+        source.close()
+        camera.stop.assert_called_once()
+        camera.close.assert_called_once()
+
+    def test_csi_supported_fps_control_and_bgr_frame_preserved(self):
+        camera = self.fake_camera({'FrameDurationLimits': (100, 1_000_000, 33333), 'NoiseReductionMode': (0, 2, 1)})
+        frame = np.full((8, 8, 3), (2, 3, 4), dtype=np.uint8)
+        camera.capture_array.return_value = frame
+        constructor = MagicMock(return_value=camera)
+        with patch.dict(sys.modules, {'picamera2': SimpleNamespace(Picamera2=constructor)}):
+            source = CameraSource('picamera2', 640, 480, 10, 1)
+        constructor.assert_called_once_with(1)
+        controls = camera.configure.call_args.args[0]['controls']
+        self.assertEqual(controls['FrameDurationLimits'], (100000, 100000))
+        self.assertEqual(controls['NoiseReductionMode'], 1)
+        self.assertIs(source.read(), frame)
+        source.close()
+
+    def test_initialization_failure_releases_device_and_preserves_original_error(self):
+        camera = self.fake_camera({})
+        camera.start.side_effect = RuntimeError('original camera error')
+        camera.close.side_effect = RuntimeError('cleanup error')
+        with patch.dict(sys.modules, {'picamera2': SimpleNamespace(Picamera2=lambda index: camera)}):
+            with self.assertRaisesRegex(RuntimeError, 'original camera error'):
+                CameraSource('picamera2', 640, 480, 15, 0)
+        camera.stop.assert_not_called()
+        camera.close.assert_called_once()
+
+    def test_opencv_usb_does_not_use_picamera_or_libcamera_controls(self):
+        constructor = MagicMock(side_effect=AssertionError('Picamera2 must not be used'))
+        with patch.dict(sys.modules, {'picamera2': SimpleNamespace(Picamera2=constructor)}), \
+                patch('camera_preview.cv2.VideoCapture') as capture:
+            capture.return_value.read.return_value = (True, np.zeros((8, 8, 3), dtype=np.uint8))
+            source = CameraSource('opencv', 640, 480, 15, 2)
+            capture.assert_called_once_with(2)
+            self.assertEqual(source.read().shape, (8, 8, 3))
+            source.close()
+            capture.return_value.release.assert_called_once()
+            constructor.assert_not_called()
 
 
 class PreviewTests(unittest.TestCase):

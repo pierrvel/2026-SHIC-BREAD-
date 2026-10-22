@@ -13,6 +13,7 @@ for arg in "$@"; do
   forward_args+=("$arg")
   if [[ "$arg" == '--sample' ]]; then sample_mode=1; fi
   if [[ "$previous_arg" == '--camera-backend' ]]; then camera_backend="$arg"; fi
+  if [[ "$arg" == --camera-backend=* ]]; then camera_backend="${arg#*=}"; fi
   if [[ "$arg" == '--help' || "$arg" == '-h' ]]; then
     echo 'Usage: bash scripts/run-pi.sh [--sample] [--port 8000] [--interval 30] [--camera-backend opencv]'
     echo 'Camera only: bash scripts/run-pi.sh --preview [--port 8081] [--fps 15] [--width 960] [--height 720]'

@@ -5,6 +5,7 @@ Picamera2 RGB888 arrays use BGR byte order, matching OpenCV's JPEG encoder.
 """
 import argparse
 from collections import deque
+from contextlib import suppress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import signal
@@ -61,14 +62,32 @@ class CameraSource:
     def __init__(self, backend, width, height, fps, index):
         self.camera = None
         self.backend = backend
+        self.started = False
+        self.pixel_format = 'RGB888'
         try:
             if backend == 'picamera2':
                 from picamera2 import Picamera2
                 self.camera = Picamera2(index)
-                self.camera.configure(self.camera.create_video_configuration(
+                available = self.camera.camera_controls
+                controls = {}
+                if 'FrameDurationLimits' in available:
+                    duration = round(1_000_000 / fps)
+                    controls['FrameDurationLimits'] = (duration, duration)
+                else:
+                    print('카메라가 FPS 제어를 지원하지 않습니다. 장치 기본 속도로 촬영하고 '
+                          '송출 속도만 제한합니다. USB 웹캠은 --camera-backend opencv를 권장합니다.',
+                          flush=True)
+                configuration = self.camera.create_video_configuration(
                     main={'size': (width, height), 'format': 'RGB888'},
-                    controls={'FrameRate': fps}, buffer_count=4))
+                    controls=controls, buffer_count=4)
+                # Older Picamera2 versions may insert Raspberry Pi-only defaults
+                # even for USB cameras. Never submit unadvertised controls.
+                configuration['controls'] = {key: value for key, value in
+                                             configuration.get('controls', {}).items() if key in available}
+                self.camera.configure(configuration)
+                self.pixel_format = self.camera.camera_configuration()['main']['format']
                 self.camera.start()
+                self.started = True
             else:
                 self.camera = cv2.VideoCapture(index)
                 if not self.camera.isOpened():
@@ -78,12 +97,26 @@ class CameraSource:
                 self.camera.set(cv2.CAP_PROP_FPS, fps)
                 self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         except Exception:
-            self.close()
+            # Cleanup errors must not replace the original initialization error.
+            with suppress(Exception):
+                self.close()
             raise
 
     def read(self):
         if self.backend == 'picamera2':
-            return self.camera.capture_array('main')
+            frame = self.camera.capture_array('main')
+            # USB libcamera pipelines can negotiate MJPEG instead of RGB888.
+            # Picamera2 decodes MJPEG via Pillow to RGB; OpenCV expects BGR.
+            if self.pixel_format == 'RGB888':
+                return frame
+            conversions = {'MJPEG': cv2.COLOR_RGB2BGR, 'BGR888': cv2.COLOR_RGB2BGR,
+                           'XBGR8888': cv2.COLOR_RGBA2BGR, 'XRGB8888': cv2.COLOR_BGRA2BGR,
+                           'YUYV': cv2.COLOR_YUV2BGR_YUYV, 'UYVY': cv2.COLOR_YUV2BGR_UYVY,
+                           'YUV420': cv2.COLOR_YUV2BGR_I420}
+            if self.pixel_format not in conversions:
+                raise RuntimeError(f'지원하지 않는 카메라 포맷: {self.pixel_format}. '
+                                   'USB 웹캠은 --camera-backend opencv로 실행하세요')
+            return cv2.cvtColor(frame, conversions[self.pixel_format])
         ok, frame = self.camera.read()
         if not ok:
             raise RuntimeError('USB 카메라 프레임을 읽지 못했습니다')
@@ -91,14 +124,16 @@ class CameraSource:
 
     def close(self):
         if self.camera is not None:
+            camera, self.camera = self.camera, None
             if self.backend == 'picamera2':
                 try:
-                    self.camera.stop()
+                    if self.started:
+                        camera.stop()
                 finally:
-                    self.camera.close()
+                    self.started = False
+                    camera.close()
             else:
-                self.camera.release()
-            self.camera = None
+                camera.release()
 
 
 class SampleSource:
@@ -289,6 +324,7 @@ def main():
     except Exception as error:
         print(f'실행 실패: {error}\n기존 카메라 프로그램을 종료하고 rpicam-hello --list-cameras로 확인하세요. '
               'Picamera2는 Raspberry Pi OS의 python3-picamera2 패키지가 필요합니다. '
+              'USB 웹캠이라면 --camera-backend opencv로 다시 실행하세요. '
               '카메라 실패 시 합성 영상으로 전환하지 않습니다.', file=sys.stderr)
         return 1
     finally:
