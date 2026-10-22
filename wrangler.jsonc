@@ -1,0 +1,5 @@
+{
+  "name": "bread-notificator",
+  "pages_build_output_dir": "./web-dashboard/dist",
+  "compatibility_date": "2026-10-22"
+}

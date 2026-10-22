@@ -12,9 +12,10 @@ export default defineConfig({
   envDir: false,
   envPrefix: 'BREAD_PREVIEW_',
   define: {
-    'import.meta.env': JSON.stringify({
-      VITE_MOCK_MODE: 'true', MODE: 'preview', PROD: true, DEV: false, BASE_URL: './',
-    }),
+    // Vite constructs the complete env object itself. Define individual keys so
+    // the portable demo is explicitly mock even when production has no fallback.
+    'import.meta.env.VITE_MOCK_MODE': JSON.stringify('true'),
+    'import.meta.env.VITE_CAMERA_STREAM_URL': JSON.stringify(''),
   },
   plugins: [react(), tailwindcss(), inlinePreviewAssets()],
   build: {

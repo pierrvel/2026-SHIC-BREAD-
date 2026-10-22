@@ -25,7 +25,7 @@ import cv2
 
 from analyzer import validate_config
 from generate_sample import DEFAULT_CONFIG, generate
-from main import Camera, atomic_json, process_once
+from main import Camera, HTTPFrameCamera, atomic_json, process_once
 
 ROOT = Path(__file__).resolve().parent
 LOG = logging.getLogger('bread.local')
@@ -50,12 +50,13 @@ def atomic_bytes(path, data):
 
 class LocalState:
     def __init__(self, data_dir, sample=False, sample_image=None, empty_image=None,
-                 backend='auto', camera_index=0, interval=30):
+                 backend='auto', camera_index=0, interval=30, camera_url=None):
         self.data_dir = Path(data_dir).resolve()
         self.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.path = self.data_dir / 'state.json'
         self.sample = sample
         self.backend, self.camera_index, self.interval = backend, camera_index, interval
+        self.camera_url = camera_url
         self.sample_image = Path(sample_image) if sample_image else self.data_dir / 'fixtures/sample_vending.jpg'
         self.empty_image = Path(empty_image) if empty_image else (
             self.data_dir / 'fixtures/empty_vending.jpg' if sample else self.data_dir / 'empty-machine.png')
@@ -153,7 +154,7 @@ class LocalState:
                     raise ValueError('샘플 사진을 읽지 못했습니다.')
                 return frame
             if self.camera is None:
-                self.camera = Camera(self.backend, self.camera_index)
+                self.camera = HTTPFrameCamera(self.camera_url) if self.camera_url else Camera(self.backend, self.camera_index)
             try:
                 return self.camera.read()
             except Exception:
@@ -389,6 +390,7 @@ def main():
     parser.add_argument('--empty-image', type=Path)
     parser.add_argument('--camera-backend', choices=['auto', 'picamera2', 'opencv'], default='auto')
     parser.add_argument('--camera-index', type=int, default=0)
+    parser.add_argument('--camera-url', help='Use the live preview JPEG snapshot endpoint instead of opening a second camera')
     parser.add_argument('--data-dir', type=Path, default=Path.home() / '.local/share/school-bread')
     parser.add_argument('--web-dir', type=Path, default=ROOT / 'web')
     parser.add_argument('--admin-password-file', type=Path)
@@ -397,8 +399,10 @@ def main():
         parser.error('--interval must be positive')
     if not args.sample and args.sample_image:
         parser.error('--sample-image requires --sample')
+    if args.sample and args.camera_url:
+        parser.error('--sample and --camera-url cannot be combined')
     state = LocalState(args.data_dir, args.sample, args.sample_image, args.empty_image,
-                       args.camera_backend, args.camera_index, args.interval)
+                       args.camera_backend, args.camera_index, args.interval, args.camera_url)
     server = LocalServer((args.host, args.port), state, args.web_dir, args.admin_password_file)
     LOG.info('Mode: %s; LAN dashboard port: %s', 'SYNTHETIC SAMPLE' if args.sample else 'REAL CAMERA', server.server_port)
     LOG.info('Administrator password file (not logged): %s', server.password_file)

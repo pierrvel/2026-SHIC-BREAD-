@@ -3,10 +3,10 @@ from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
-files = ['README.md', 'edge-pi/server.py', 'edge-pi/main.py', 'edge-pi/analyzer.py',
+files = ['README.md', 'docs/DEPLOY.md', 'edge-pi/server.py', 'edge-pi/main.py', 'edge-pi/analyzer.py',
          'edge-pi/generate_sample.py', 'edge-pi/requirements.txt', 'edge-pi/.env.example',
          'edge-pi/web/index.html', 'scripts/run-pi.sh', 'scripts/preview-camera.sh',
-         'edge-pi/camera_preview.py']
+         'edge-pi/camera_preview.py', 'scripts/share-camera.sh']
 archive = root / 'school-bread-pi.zip'
 for name in files:
     if not (root / name).is_file():

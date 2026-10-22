@@ -7,16 +7,17 @@ import { subscribeLocal, subscribeLocalAdmin, loginLocal, logoutLocal, saveLocal
 
 const env = import.meta.env;
 export const isLocal = window.__BREAD_RUNTIME__?.mode === 'local';
-export const isMock = !isLocal && (env.VITE_MOCK_MODE === 'true' || (env.VITE_MOCK_MODE !== 'false' && !env.VITE_FIREBASE_API_KEY));
+export const isMock = !isLocal && (env.VITE_MOCK_MODE === 'true' || (env.DEV && env.VITE_MOCK_MODE !== 'false' && !env.VITE_FIREBASE_API_KEY));
 export const isSample = isMock || (isLocal && window.__BREAD_RUNTIME__.sample === true);
+const firebaseKeys = ['API_KEY', 'AUTH_DOMAIN', 'DATABASE_URL', 'PROJECT_ID', 'APP_ID'];
+export const inventoryEnabled = isLocal || isMock || firebaseKeys.some((key) => !!env[`VITE_FIREBASE_${key}`]);
 let database;
 let auth;
 let initializationError;
 
-if (!isMock && !isLocal) {
-  const keys = ['API_KEY', 'AUTH_DOMAIN', 'DATABASE_URL', 'PROJECT_ID', 'APP_ID'];
-  if (keys.some((key) => !env[`VITE_FIREBASE_${key}`])) {
-    initializationError = new Error('Firebase 설정이 누락되었습니다. .env.local을 확인해 주세요.');
+if (!isMock && !isLocal && inventoryEnabled) {
+  if (firebaseKeys.some((key) => !env[`VITE_FIREBASE_${key}`])) {
+    initializationError = new Error('재고 서비스 연결을 준비하고 있습니다. 잠시 후 다시 확인해 주세요.');
   } else {
     try {
       const app = initializeApp({
@@ -62,6 +63,7 @@ if (isMock) window.addEventListener('storage', (event) => {
 export function subscribeNode(path, callback, onError) {
   if (!['config', 'status'].includes(path)) throw new Error('Unsupported database path');
   if (isLocal) return subscribeLocal(path, callback, onError);
+  if (!inventoryEnabled) { callback(null); return () => {}; }
   if (isMock) {
     const listener = () => callback(readMock()[path]);
     mockListeners.add(listener);
@@ -79,6 +81,7 @@ export function subscribeNode(path, callback, onError) {
 
 export function subscribeConnection(callback) {
   if (isLocal) return subscribeLocal('connected', callback);
+  if (!inventoryEnabled) { callback(false); return () => {}; }
   if (isMock) { callback(true); return () => {}; }
   if (initializationError) { callback(false); return () => {}; }
   return onValue(ref(database, '.info/connected'), (snapshot) => callback(snapshot.val() === true), () => callback(false));
@@ -119,6 +122,7 @@ export async function saveConfig(config, expectedConfig) {
 
 export function subscribeAdmin(callback) {
   if (isLocal) return subscribeLocalAdmin(callback);
+  if (!inventoryEnabled) { callback({ ready: true, admin: false }); return () => {}; }
   if (isMock) { callback({ ready: true, admin: true, email: '로컬 데모 관리자' }); return () => {}; }
   if (initializationError) { callback({ ready: true, admin: false }); return () => {}; }
   let sequence = 0;

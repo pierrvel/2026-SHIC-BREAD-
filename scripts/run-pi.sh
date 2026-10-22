@@ -6,17 +6,19 @@ cd "$repo_dir"
 sample_mode=0
 preview_mode=0
 camera_backend=picamera2
+camera_url_mode=0
 forward_args=()
 previous_arg=''
 for arg in "$@"; do
   if [[ "$arg" == '--preview' ]]; then preview_mode=1; continue; fi
   forward_args+=("$arg")
   if [[ "$arg" == '--sample' ]]; then sample_mode=1; fi
+  if [[ "$arg" == '--camera-url' || "$arg" == --camera-url=* ]]; then camera_url_mode=1; fi
   if [[ "$previous_arg" == '--camera-backend' ]]; then camera_backend="$arg"; fi
   if [[ "$arg" == --camera-backend=* ]]; then camera_backend="${arg#*=}"; fi
   if [[ "$arg" == '--help' || "$arg" == '-h' ]]; then
     echo 'Usage: bash scripts/run-pi.sh [--sample] [--port 8000] [--interval 30] [--camera-backend opencv]'
-    echo 'Camera only: bash scripts/run-pi.sh --preview [--port 8081] [--fps 60] [--width 1280] [--height 720] [--quality 90] [--denoise]'
+    echo 'Camera only: bash scripts/run-pi.sh --preview [--port 8081] [--fps 60] [--width 1920] [--height 1080] [--quality 90] [--denoise]'
     echo 'Preview FPS range: 1..120; actual rate/resolution depend on camera capabilities, light and CPU/network load.'
     echo 'Default: real Pi camera. --sample explicitly selects synthetic images.'
     echo 'Web files are included; Node.js/npm and Firebase are not required for this LAN mode.'
@@ -37,7 +39,7 @@ else
   if [[ ! -x "$system_python" ]]; then system_python="$(command -v python3)"; fi
   import_check='import cv2, numpy; from PIL import Image, features; assert features.check("webp")'
   packages=(python3-venv python3-opencv python3-numpy python3-pil)
-  if [[ "$sample_mode" == 0 && "$camera_backend" != opencv ]]; then
+  if [[ "$sample_mode" == 0 && "$camera_backend" != opencv && "$camera_url_mode" == 0 ]]; then
     import_check+='; from picamera2 import Picamera2'
     packages+=(python3-picamera2)
   fi
@@ -58,7 +60,7 @@ else
 fi
 
 "$pi_python" -c 'import sys; assert sys.version_info >= (3,10), "Python >=3.10 required"; import cv2, numpy; from PIL import Image, features; assert features.check("webp"), "Pillow WebP support is required"'
-if [[ "$sample_mode" == 0 && "$camera_backend" != opencv ]]; then
+if [[ "$sample_mode" == 0 && "$camera_backend" != opencv && "$camera_url_mode" == 0 ]]; then
   "$pi_python" -c 'from picamera2 import Picamera2'
 fi
 if [[ "$preview_mode" == 1 ]]; then

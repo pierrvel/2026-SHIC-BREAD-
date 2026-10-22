@@ -11,7 +11,7 @@ archive = root / 'school-bread-preview.zip'
 with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as bundle:
     bundle.write(html, 'index.html')
     bundle.writestr('README.txt',
-        '쉬는빵 오프라인 데모\n\n'
+        '빵살핌 오프라인 데모\n\n'
         '1. 압축을 풀어 주세요.\n'
         '2. index.html을 Chrome 또는 Edge에서 열어 주세요.\n'
         '서버 설치나 Firebase 계정 없이 샘플 재고·사진·필터·관리자 설정을 볼 수 있습니다.\n'

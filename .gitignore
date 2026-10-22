@@ -17,4 +17,7 @@ edge-pi/empty_vending.jpg
 edge-pi/mock-state.json
 *.log
 .firebase/
+.wrangler/
+.dev.vars
+.dev.vars.*
 *-debug.log

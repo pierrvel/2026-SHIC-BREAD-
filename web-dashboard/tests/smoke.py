@@ -15,7 +15,7 @@ with sync_playwright() as p:
     expect(page.locator('.slot-card')).to_have_count(6)
     expect(page.locator('.slot-card.stocked')).to_have_count(4)
     expect(page.locator('.slot-card.soldout')).to_have_count(2)
-    page.wait_for_function('Array.from(document.querySelectorAll(".slot-photo img")).every(img => img.complete && img.naturalWidth > 0)')
+    page.wait_for_function('Array.from(document.querySelectorAll(".map-slot-photo img")).every(img => img.complete && img.naturalWidth > 0)')
     page.get_by_role('button',name='재고 있는 칸',exact=True).click()
     expect(page.locator('.slot-card')).to_have_count(4)
     page.get_by_role('button',name='전체 보기',exact=True).click()
@@ -61,7 +61,7 @@ with sync_playwright() as p:
     expect(other.get_by_label('칸 이름',exact=True)).to_have_value('1번 칸')
     print('PASS cross-tab realtime updates, conflict protection, JSON export and reset')
 
-    page.get_by_role('button',name='재고 확인',exact=True).click()
+    page.get_by_role('button',name='슬롯 지도',exact=True).click()
     expect(page.locator('.slot-card.stocked')).to_have_count(4)
     for width in [375,320]:
         page.set_viewport_size({'width':width,'height':900})

@@ -10,8 +10,11 @@ import time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 import cv2
+import numpy as np
 
 from analyzer import analyze_frame, frame_difference, validate_config
 from generate_sample import DEFAULT_CONFIG, generate
@@ -39,6 +42,33 @@ def atomic_json(path: Path, value: dict):
     finally:
         if temporary and os.path.exists(temporary):
             os.unlink(temporary)
+
+
+class HTTPFrameCamera:
+    """Reuse the live camera producer instead of opening the USB device twice."""
+    def __init__(self, url, allow_sample=False):
+        parsed = urlsplit(url)
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError('CAMERA_URL must be an HTTP(S) snapshot URL without credentials')
+        self.url = url
+        self.allow_sample = allow_sample
+
+    def read(self):
+        with urlopen(self.url, timeout=5) as response:
+            if response.headers.get('X-Bread-Sample') == 'true' and not self.allow_sample:
+                raise RuntimeError('Synthetic camera frames cannot be used as real inventory input')
+            if response.headers.get_content_type() != 'image/jpeg':
+                raise RuntimeError('Camera snapshot endpoint did not return JPEG')
+            data = response.read(16 * 1024 * 1024 + 1)
+        if len(data) > 16 * 1024 * 1024:
+            raise RuntimeError('Camera snapshot exceeds 16 MiB')
+        frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+        if frame is None:
+            raise RuntimeError('Camera snapshot could not be decoded')
+        return frame
+
+    def close(self):
+        pass
 
 
 class Camera:
@@ -118,6 +148,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true", help="One iteration; fail with a nonzero exit code on error")
     parser.add_argument("--interval", type=float, default=float(os.getenv("CAPTURE_INTERVAL", "30")))
+    parser.add_argument("--camera-url", default=os.getenv('CAMERA_URL'), help='Read JPEG snapshots from the running live camera producer')
     parser.add_argument("--sample", type=Path, default=Path(os.getenv("SAMPLE_IMAGE_PATH", ROOT / "sample_vending.jpg")))
     parser.add_argument("--empty", type=Path, default=Path(os.getenv("EMPTY_IMAGE_PATH", ROOT / "empty_vending.jpg")))
     parser.add_argument("--mock-config", type=Path, help="Read exported config JSON at every mock iteration")
@@ -125,13 +156,15 @@ def main():
     parser.add_argument("--calibrate-empty", action="store_true", help="Capture a fully empty machine to --empty, then exit")
     args = parser.parse_args()
     mock = env_flag("MOCK_MODE", True)
+    if mock and args.camera_url:
+        parser.error('--camera-url requires MOCK_MODE=false')
     diff_threshold = float(os.getenv("DIFF_THRESHOLD", "2.0"))
     if not math.isfinite(args.interval) or args.interval <= 0 or not math.isfinite(diff_threshold) or not 0 <= diff_threshold <= 255:
         parser.error("interval must be positive; DIFF_THRESHOLD must be between 0 and 255")
     camera = None
     try:
         if not mock:
-            camera = Camera(os.getenv("CAMERA_BACKEND", "auto"), int(os.getenv("CAMERA_INDEX", "0")))
+            camera = HTTPFrameCamera(args.camera_url) if args.camera_url else Camera(os.getenv("CAMERA_BACKEND", "auto"), int(os.getenv("CAMERA_INDEX", "0")))
         if args.calibrate_empty:
             if mock:
                 parser.error("Calibration requires MOCK_MODE=false and a fully empty machine")

@@ -7,13 +7,14 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from camera_preview import CameraSource, FrameStream, PreviewServer, SampleSource, parse_args
+from camera_preview import CameraSource, FrameStream, PreviewServer, PublicStreamServer, SampleSource, parse_args
+from main import HTTPFrameCamera
 
 
 class CameraCompatibilityTests(unittest.TestCase):
@@ -80,12 +81,23 @@ class CameraCompatibilityTests(unittest.TestCase):
             capture.return_value.release.assert_called_once()
             constructor.assert_not_called()
 
+    def test_usb_retries_30_fps_without_lowering_fhd_resolution(self):
+        with patch('camera_preview.cv2.VideoCapture') as capture:
+            capture.return_value.get.side_effect = [15.0, 30.0]
+            source = CameraSource('opencv', 1920, 1080, 60, 0)
+            settings = capture.return_value.set.call_args_list
+            self.assertIn(unittest.mock.call(cv2.CAP_PROP_FPS, 60), settings)
+            self.assertIn(unittest.mock.call(cv2.CAP_PROP_FPS, 30), settings)
+            self.assertEqual([c.args for c in settings if c.args[0] == cv2.CAP_PROP_FRAME_WIDTH], [(cv2.CAP_PROP_FRAME_WIDTH, 1920)])
+            self.assertEqual(source.device_fps, 30.0)
+            source.close()
+
 
 class QualityTests(unittest.TestCase):
     def test_high_fps_full_hd_and_denoise_options(self):
         with patch.object(sys, 'argv', ['camera_preview.py']):
             args = parse_args()
-            self.assertEqual((args.width, args.height, args.fps, args.quality), (1280, 720, 60, 90))
+            self.assertEqual((args.width, args.height, args.fps, args.quality), (1920, 1080, 60, 90))
         with patch.object(sys, 'argv', ['camera_preview.py', '--fps', '60', '--width', '1920', '--height', '1080', '--denoise']):
             args = parse_args()
             self.assertTrue(args.denoise)
@@ -114,7 +126,8 @@ class QualityTests(unittest.TestCase):
 
 class PreviewTests(unittest.TestCase):
     def setUp(self):
-        self.stream = FrameStream(SampleSource(320, 240), sample=True, fps=20, width=320, height=240)
+        self.stream = FrameStream(SampleSource(320, 240), sample=True, fps=20, width=320, height=240,
+                                  source_factory=lambda width, height, fps: SampleSource(width, height))
         self.stream.start()
         self.server = PreviewServer(('127.0.0.1', 0), self.stream)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -131,7 +144,7 @@ class PreviewTests(unittest.TestCase):
         with urlopen(self.base + '/api/health', timeout=3) as response:
             return json.load(response)
 
-    def read_jpeg(self, response):
+    def read_jpeg(self, response, shape=(240, 320, 3)):
         self.assertEqual(response.readline(), b'--FRAME\r\n')
         headers = {}
         while True:
@@ -145,8 +158,165 @@ class PreviewTests(unittest.TestCase):
         jpeg = response.read(int(headers['content-length']))
         self.assertEqual(response.read(2), b'\r\n')
         frame = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
-        self.assertEqual(frame.shape, (240, 320, 3))
+        self.assertEqual(frame.shape, shape)
         return jpeg
+
+    def post(self, body, *, token=True, origin=None):
+        headers = {'Content-Type': 'application/json', 'Origin': origin or self.base}
+        if token:
+            headers['X-Preview-Token'] = self.server.control_token
+        request = Request(self.base + '/api/settings', data=json.dumps(body).encode(), headers=headers)
+        try:
+            with urlopen(request, timeout=3) as response:
+                return response.status, json.load(response)
+        except HTTPError as error:
+            with error:
+                return error.code, json.load(error)
+
+    def change_body(self, **overrides):
+        h = self.health()
+        settings = {'width': h['requested_width'], 'height': h['requested_height'],
+                    'fps': h['target_fps'], 'quality': h['quality'], 'denoise': h['denoise']}
+        return {'settings': {**settings, **overrides}, 'expected_version': h['settings_version']}
+
+    def wait_change(self, change_id):
+        deadline = time.monotonic() + 4
+        while time.monotonic() < deadline:
+            state = self.health()
+            if state['change_id'] == change_id and state['change_state'] not in ('pending', 'applying'):
+                return state
+            time.sleep(.02)
+        self.fail('camera settings change did not finish')
+
+    def test_settings_apply_changes_real_encoded_dimensions_and_fps(self):
+        old_source = self.stream.source
+        with patch.object(old_source, 'close', wraps=old_source.close) as close:
+            status, result = self.post(self.change_body(width=640, height=480, fps=60))
+            self.assertEqual(status, 202)
+            state = self.wait_change(result['change_id'])
+            close.assert_called_once()
+        self.assertEqual(state['change_state'], 'applied')
+        self.assertEqual((state['width'], state['height'], state['target_fps']), (640, 480, 60))
+        self.assertEqual(state['settings_version'], 1)
+        self.assertTrue(state['live'])
+        with urlopen(self.base + '/stream.mjpg', timeout=3) as response:
+            self.read_jpeg(response, shape=(480, 640, 3))
+
+    def test_software_settings_do_not_reopen_camera(self):
+        with patch.object(self.stream, 'source_factory') as factory:
+            status, result = self.post(self.change_body(quality=80, denoise=True))
+            self.assertEqual(status, 202)
+            state = self.wait_change(result['change_id'])
+            factory.assert_not_called()
+        self.assertTrue(state['denoise'])
+        self.assertEqual(state['quality'], 80)
+
+    def test_jpeg_snapshot_reuses_producer_without_opening_camera(self):
+        with self.assertRaisesRegex(RuntimeError, 'Synthetic camera frames'):
+            HTTPFrameCamera(self.base + '/api/frame.jpg').read()
+        camera = HTTPFrameCamera(self.base + '/api/frame.jpg', allow_sample=True)
+        frame = camera.read()
+        self.assertEqual(frame.shape, (240, 320, 3))
+        with self.assertRaises(RuntimeError):
+            HTTPFrameCamera(self.base + '/api/health').read()
+        with self.assertRaises(ValueError):
+            HTTPFrameCamera('file:///etc/passwd')
+
+    def test_public_origin_exposes_only_readonly_video_and_minimal_health(self):
+        public = PublicStreamServer(('127.0.0.1', 0), self.stream)
+        thread = threading.Thread(target=public.serve_forever, daemon=True)
+        thread.start()
+        base = f'http://127.0.0.1:{public.server_port}'
+        try:
+            with urlopen(base + '/api/health', timeout=3) as response:
+                state = json.load(response)
+                self.assertTrue(state['live'])
+                self.assertNotIn('settings_version', state)
+                self.assertEqual(response.headers['Access-Control-Allow-Origin'], '*')
+            for path in ['/', '/api/settings', '/api/frame.jpg']:
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(base + path, timeout=3)
+                self.assertEqual(error.exception.code, 404)
+            with self.assertRaises(HTTPError) as error:
+                urlopen(Request(base + '/api/settings', data=b'{}', headers={'X-Preview-Token': self.server.control_token}), timeout=3)
+            self.assertEqual(error.exception.code, 403)
+            with urlopen(base + '/stream.mjpg', timeout=3) as response:
+                self.read_jpeg(response)
+        finally:
+            public.shutdown()
+            public.server_close()
+            thread.join(timeout=2)
+
+    def test_settings_require_page_token_and_same_origin(self):
+        body = self.change_body(fps=30)
+        self.assertEqual(self.post(body, token=False)[0], 403)
+        self.assertEqual(self.post(body, origin='https://unrelated.example')[0], 403)
+        self.assertEqual(self.health()['settings_version'], 0)
+
+    def test_invalid_settings_rejected_without_touching_camera(self):
+        with patch.object(self.stream, 'source_factory') as factory:
+            for changes in ({'fps': 121}, {'fps': True}, {'width': 641}, {'width': 9000},
+                            {'quality': 96}, {'denoise': 'true'}, {'unknown': 1}):
+                self.assertEqual(self.post(self.change_body(**changes))[0], 400)
+            self.assertEqual(self.post({'settings': {}, 'expected_version': False})[0], 400)
+            factory.assert_not_called()
+        self.assertEqual(self.health()['settings_version'], 0)
+
+    def test_failed_reopen_restores_previous_camera_settings_and_keeps_stream_live(self):
+        calls = []
+        def factory(width, height, fps):
+            calls.append((width, height, fps))
+            if width == 640:
+                raise RuntimeError('unsupported device mode')
+            return SampleSource(width, height)
+        self.stream.source_factory = factory
+        status, result = self.post(self.change_body(width=640, height=480, fps=30))
+        self.assertEqual(status, 202)
+        state = self.wait_change(result['change_id'])
+        self.assertEqual(state['change_state'], 'failed')
+        self.assertEqual(calls, [(640, 480, 30), (320, 240, 20)])
+        self.assertEqual(state['settings_version'], 0)
+        self.assertEqual((state['width'], state['height']), (320, 240))
+        self.assertIn('unsupported device mode', state['change_message'])
+        self.assertTrue(state['live'])
+        self.assertIsNone(state['error'])
+        with urlopen(self.base + '/stream.mjpg', timeout=3) as response:
+            self.read_jpeg(response)
+
+    def test_bad_first_frame_releases_candidate_before_restoring_camera(self):
+        bad = SimpleNamespace(read=lambda: None, close=MagicMock())
+        self.stream.source_factory = lambda w, h, f: bad if w == 640 else SampleSource(w, h)
+        _, result = self.post(self.change_body(width=640, height=480))
+        state = self.wait_change(result['change_id'])
+        bad.close.assert_called_once()
+        self.assertEqual(state['change_state'], 'failed')
+        self.assertTrue(state['live'])
+
+    def test_failed_rollback_is_reported_and_server_remains_responsive(self):
+        self.stream.source_factory = MagicMock(side_effect=RuntimeError('device unavailable'))
+        _, result = self.post(self.change_body(width=640, height=480))
+        state = self.wait_change(result['change_id'])
+        self.assertEqual(state['change_state'], 'failed')
+        self.assertFalse(state['live'])
+        self.assertIn('복구 실패', state['error'])
+        self.assertEqual(self.post(self.change_body(fps=30))[0], 503)
+
+    def test_busy_change_and_stale_version_rejected(self):
+        entered, release = threading.Event(), threading.Event()
+        def factory(width, height, fps):
+            entered.set()
+            release.wait(timeout=3)
+            return SampleSource(width, height)
+        self.stream.source_factory = factory
+        body = self.change_body(width=640, height=480)
+        try:
+            _, result = self.post(body)
+            self.assertTrue(entered.wait(timeout=2))
+            self.assertEqual(self.post(body)[0], 409)
+        finally:
+            release.set()
+        self.assertEqual(self.wait_change(result['change_id'])['change_state'], 'applied')
+        self.assertEqual(self.post(body)[0], 409)
 
     def test_continuous_jpegs_and_multiple_clients_share_source(self):
         with urlopen(self.base + '/stream.mjpg', timeout=3) as first, urlopen(self.base + '/stream.mjpg', timeout=3) as second:
