@@ -1,0 +1,304 @@
+"""Camera-only LAN MJPEG preview. No inventory, recording, Firebase or npm.
+
+One producer owns the camera; clients share its latest JPEG and skip old frames.
+Picamera2 RGB888 arrays use BGR byte order, matching OpenCV's JPEG encoder.
+"""
+import argparse
+from collections import deque
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
+import signal
+import sys
+import threading
+import time
+from urllib.parse import urlsplit
+
+import cv2
+import numpy as np
+
+
+PAGE = '''<!doctype html><html lang="ko"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>쉬는빵 · 카메라 연결 확인</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#111827;color:#f3f4f6;font:16px system-ui,sans-serif}
+main{max-width:1050px;margin:auto;padding:24px}h1{font-size:24px;margin:0 0 12px}
+p{line-height:1.7;color:#cbd5e1}.video{background:#020617;border-radius:12px;overflow:hidden;min-height:160px}
+img{display:block;width:100%;height:auto}button{background:#f8fafc;color:#111827;border:0;padding:12px 18px;border-radius:8px;margin:12px 8px 0 0;cursor:pointer}
+#status{padding:12px;background:#1e293b;border-radius:8px}#status[data-live="true"]{color:#86efac}
+.mirror{transform:scaleX(-1)}small{color:#94a3b8}
+</style><main><h1>카메라 연결 확인</h1>
+<p id="source">카메라 상태 확인 중…</p><div class="video"><img id="video" src="/stream.mjpg" alt="카메라 실시간 영상"></div>
+<p id="status" role="status">영상 수신 중…</p>
+<button id="reconnect">다시 연결</button><button id="mirror">좌우 반전</button>
+<p>카메라 앞에서 손을 움직여 영상이 계속 바뀌는지 확인하세요.<br>이 화면은 영상 확인용이며 재고 판별과 녹화는 수행하지 않습니다.</p>
+<small>같은 네트워크에서만 사용하세요. 종료: 파이 터미널에서 Ctrl+C.</small></main>
+<script>
+const video=document.getElementById('video'),status=document.getElementById('status');
+let lastCount=-1,lastProgress=performance.now();
+function reconnect(){video.src='/stream.mjpg?t='+Date.now();lastCount=-1;lastProgress=performance.now()}
+document.getElementById('reconnect').onclick=reconnect;
+document.getElementById('mirror').onclick=()=>video.classList.toggle('mirror');
+video.onerror=()=>{status.dataset.live='false';status.textContent='영상 연결이 끊겼습니다. 다시 연결을 눌러주세요.'};
+async function poll(){
+ try{
+  const response=await fetch('/api/health',{cache:'no-store',signal:AbortSignal.timeout(2500)});
+  if(!response.ok)throw Error('서버 오류');const h=await response.json();
+  document.getElementById('source').textContent=(h.sample?'합성 테스트 영상 · 실제 카메라 아님':'실제 카메라 · '+h.backend)+' · '+h.width+' × '+h.height+' · 목표 '+h.target_fps+' FPS';
+  if(h.frames!==lastCount){lastCount=h.frames;lastProgress=performance.now()}
+  const live=h.live&&video.naturalWidth>0&&performance.now()-lastProgress<3500;
+  status.dataset.live=String(live);
+  status.textContent=h.error?'카메라 오류: '+h.error:live?'영상 수신 중 · 촬영 '+h.fps+' FPS · '+h.frames+' 프레임':'영상 수신 대기 또는 중단 · 계속 멈춰 있으면 다시 연결을 누르세요.';
+ }catch(e){status.dataset.live='false';status.textContent='서버 연결 끊김 · 파이 터미널과 네트워크를 확인하세요.'}
+ setTimeout(poll,1000);
+}poll();
+</script></html>'''
+
+
+class CameraSource:
+    """Continuous capture; never reopen a device for every video frame."""
+
+    def __init__(self, backend, width, height, fps, index):
+        self.camera = None
+        self.backend = backend
+        try:
+            if backend == 'picamera2':
+                from picamera2 import Picamera2
+                self.camera = Picamera2(index)
+                self.camera.configure(self.camera.create_video_configuration(
+                    main={'size': (width, height), 'format': 'RGB888'},
+                    controls={'FrameRate': fps}, buffer_count=4))
+                self.camera.start()
+            else:
+                self.camera = cv2.VideoCapture(index)
+                if not self.camera.isOpened():
+                    raise RuntimeError(f'USB 카메라 {index}를 열 수 없습니다')
+                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                self.camera.set(cv2.CAP_PROP_FPS, fps)
+                self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        except Exception:
+            self.close()
+            raise
+
+    def read(self):
+        if self.backend == 'picamera2':
+            return self.camera.capture_array('main')
+        ok, frame = self.camera.read()
+        if not ok:
+            raise RuntimeError('USB 카메라 프레임을 읽지 못했습니다')
+        return frame
+
+    def close(self):
+        if self.camera is not None:
+            if self.backend == 'picamera2':
+                try:
+                    self.camera.stop()
+                finally:
+                    self.camera.close()
+            else:
+                self.camera.release()
+            self.camera = None
+
+
+class SampleSource:
+    def __init__(self, width, height):
+        self.width, self.height, self.number = width, height, 0
+
+    def read(self):
+        self.number += 1
+        frame = np.full((self.height, self.width, 3), (35, 25, 15), dtype=np.uint8)
+        x = (self.number * 11) % max(1, self.width - 50)
+        cv2.rectangle(frame, (x, self.height // 2), (x + 40, self.height // 2 + 40), (50, 230, 80), -1)
+        cv2.putText(frame, f'SYNTHETIC TEST - NOT CAMERA / {self.number}', (10, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 1)
+        return frame
+
+    def close(self):
+        pass
+
+
+class FrameStream:
+    def __init__(self, source, *, sample=False, backend='picamera2', fps=15, quality=75):
+        self.source, self.sample, self.backend = source, sample, backend
+        self.target_fps, self.quality = fps, quality
+        self.condition = threading.Condition()
+        self.stop_event = threading.Event()
+        self.frame = None
+        self.frames = 0
+        self.width = self.height = 0
+        self.times = deque(maxlen=60)
+        self.error = None
+        self.thread = None
+
+    def capture(self):
+        frame = self.source.read()
+        if frame is None or frame.size == 0:
+            raise RuntimeError('카메라에서 빈 프레임을 받았습니다')
+        ok, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.quality])
+        if not ok:
+            raise RuntimeError('JPEG 인코딩에 실패했습니다')
+        with self.condition:
+            self.height, self.width = frame.shape[:2]
+            self.frame = jpeg.tobytes()
+            self.frames += 1
+            self.times.append(time.monotonic())
+            self.condition.notify_all()
+
+    def start(self):
+        # Fail before advertising a working server if the camera cannot capture.
+        self.capture()
+        self.thread = threading.Thread(target=self.run, name='camera-preview', daemon=True)
+        self.thread.start()
+
+    def run(self):
+        try:
+            while not self.stop_event.is_set():
+                started = time.monotonic()
+                self.capture()
+                self.stop_event.wait(max(0, 1 / self.target_fps - (time.monotonic() - started)))
+        except Exception as error:
+            with self.condition:
+                self.error = str(error)
+                self.stop_event.set()
+                self.condition.notify_all()
+            print(f'카메라 촬영 중단: {error}', file=sys.stderr, flush=True)
+
+    def health(self):
+        with self.condition:
+            age = time.monotonic() - self.times[-1] if self.times else None
+            elapsed = self.times[-1] - self.times[0] if len(self.times) > 1 else 0
+            return {'sample': self.sample, 'backend': self.backend, 'width': self.width,
+                    'height': self.height, 'target_fps': self.target_fps, 'frames': self.frames,
+                    'fps': round((len(self.times) - 1) / elapsed, 1) if elapsed else 0,
+                    'frame_age_seconds': round(age, 3) if age is not None else None,
+                    'live': age is not None and age < 3 and not self.stop_event.is_set(),
+                    'error': self.error}
+
+    def next_frame(self, previous):
+        with self.condition:
+            self.condition.wait_for(lambda: self.frames > previous or self.stop_event.is_set(), timeout=3)
+            if self.stop_event.is_set() or self.frames <= previous:
+                return None
+            return self.frames, self.frame
+
+    def close(self):
+        self.stop_event.set()
+        with self.condition:
+            self.condition.notify_all()
+        if self.thread:
+            self.thread.join(timeout=4)
+        self.source.close()
+
+
+class PreviewServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, address, stream):
+        self.stream = stream
+        super().__init__(address, PreviewHandler)
+
+
+class PreviewHandler(BaseHTTPRequestHandler):
+    def log_message(self, *_):
+        pass
+
+    def do_GET(self):
+        path = urlsplit(self.path).path
+        if path == '/':
+            data, mime = PAGE.encode(), 'text/html; charset=utf-8'
+        elif path == '/api/health':
+            data, mime = json.dumps(self.server.stream.health()).encode(), 'application/json'
+        elif path == '/stream.mjpg':
+            return self.stream_video()
+        else:
+            self.send_error(404)
+            return
+        self.send_response(200)
+        self.send_header('Content-Type', mime)
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Content-Security-Policy', "frame-ancestors 'none'")
+        self.end_headers()
+        try:
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def stream_video(self):
+        self.connection.settimeout(5)
+        self.send_response(200)
+        self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        previous = 0
+        try:
+            while True:
+                next_frame = self.server.stream.next_frame(previous)
+                if next_frame is None:
+                    break
+                previous, frame = next_frame
+                self.wfile.write(b'--FRAME\r\nContent-Type: image/jpeg\r\nContent-Length: ' +
+                                 str(len(frame)).encode() + b'\r\n\r\n' + frame + b'\r\n')
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+            pass
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='같은 LAN에서 카메라 연속 영상 확인 (DB/녹화 없음)')
+    parser.add_argument('--host', default='0.0.0.0')
+    parser.add_argument('--port', type=int, default=8081)
+    parser.add_argument('--camera-backend', choices=['picamera2', 'opencv'], default='picamera2')
+    parser.add_argument('--camera-index', type=int, default=0)
+    parser.add_argument('--fps', type=int, default=15)
+    parser.add_argument('--width', type=int, default=960)
+    parser.add_argument('--height', type=int, default=720)
+    parser.add_argument('--quality', type=int, default=75)
+    parser.add_argument('--sample', action='store_true', help='합성 영상만 사용 (실제 촬영 아님)')
+    args = parser.parse_args()
+    if not (1 <= args.fps <= 30 and 128 <= args.width <= 1920 and 96 <= args.height <= 1080
+            and args.width % 2 == 0 and args.height % 2 == 0 and 10 <= args.quality <= 95
+            and 1 <= args.port <= 65535 and args.camera_index >= 0):
+        parser.error('FPS 1..30, 짝수 해상도 128..1920 × 96..1080, 품질 10..95, 포트 1..65535 필요')
+    return args
+
+
+def main():
+    args = parse_args()
+    source = stream = server = None
+    def interrupt(*_):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupt)
+    try:
+        source = SampleSource(args.width, args.height) if args.sample else CameraSource(
+            args.camera_backend, args.width, args.height, args.fps, args.camera_index)
+        stream = FrameStream(source, sample=args.sample, backend=args.camera_backend,
+                             fps=args.fps, quality=args.quality)
+        stream.start()
+        server = PreviewServer((args.host, args.port), stream)
+        print('합성 테스트 영상입니다. 실제 카메라가 아닙니다.' if args.sample else '실제 카메라 첫 프레임 촬영 성공.', flush=True)
+        print(f'같은 네트워크의 브라우저에서 http://파이IP:{args.port} 접속 (IP 확인: hostname -I)', flush=True)
+        print('카메라 확인 전용 · 녹화/재고 분석 없음 · 종료 Ctrl+C', flush=True)
+        server.serve_forever()
+        return 0
+    except KeyboardInterrupt:
+        return 0
+    except Exception as error:
+        print(f'실행 실패: {error}\n기존 카메라 프로그램을 종료하고 rpicam-hello --list-cameras로 확인하세요. '
+              'Picamera2는 Raspberry Pi OS의 python3-picamera2 패키지가 필요합니다. '
+              '카메라 실패 시 합성 영상으로 전환하지 않습니다.', file=sys.stderr)
+        return 1
+    finally:
+        if stream:
+            stream.close()
+        elif source:
+            source.close()
+        if server:
+            server.server_close()
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

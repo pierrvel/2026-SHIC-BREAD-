@@ -4,13 +4,18 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_dir"
 
 sample_mode=0
+preview_mode=0
 camera_backend=picamera2
+forward_args=()
 previous_arg=''
 for arg in "$@"; do
+  if [[ "$arg" == '--preview' ]]; then preview_mode=1; continue; fi
+  forward_args+=("$arg")
   if [[ "$arg" == '--sample' ]]; then sample_mode=1; fi
   if [[ "$previous_arg" == '--camera-backend' ]]; then camera_backend="$arg"; fi
   if [[ "$arg" == '--help' || "$arg" == '-h' ]]; then
     echo 'Usage: bash scripts/run-pi.sh [--sample] [--port 8000] [--interval 30] [--camera-backend opencv]'
+    echo 'Camera only: bash scripts/run-pi.sh --preview [--port 8081] [--fps 15] [--width 960] [--height 720]'
     echo 'Default: real Pi camera. --sample explicitly selects synthetic images.'
     echo 'Web files are included; Node.js/npm and Firebase are not required for this LAN mode.'
     exit 0
@@ -18,7 +23,7 @@ for arg in "$@"; do
   previous_arg="$arg"
 done
 
-if [[ ! -f edge-pi/web/index.html ]]; then
+if [[ "$preview_mode" == 0 && ! -f edge-pi/web/index.html ]]; then
   echo 'Prebuilt web files are missing. Download/pull the complete latest repository.' >&2
   exit 1
 fi
@@ -54,7 +59,10 @@ fi
 if [[ "$sample_mode" == 0 && "$camera_backend" != opencv ]]; then
   "$pi_python" -c 'from picamera2 import Picamera2'
 fi
+if [[ "$preview_mode" == 1 ]]; then
+  exec "$pi_python" edge-pi/camera_preview.py --camera-backend "$camera_backend" "${forward_args[@]}"
+fi
 echo '웹 서버와 분석기를 함께 시작합니다. 접속할 파이 IP는 다른 터미널에서 hostname -I 로 확인하세요.'
 echo '기본 웹 포트: 8000 / 종료: Ctrl+C'
 echo '기본 관리자 비밀번호 확인: cat ~/.local/share/school-bread/admin-password'
-exec "$pi_python" edge-pi/server.py --camera-backend "$camera_backend" "$@"
+exec "$pi_python" edge-pi/server.py --camera-backend "$camera_backend" "${forward_args[@]}"
