@@ -1,8 +1,19 @@
-# 빵살핌 · 교내 자판기 재고 확인
+# 빵살핌 · 교내 자판기 실시간 화면
 
-제공받은 HTML을 React의 **슬롯 지도 / 학생용 실시간 CCTV 상세 / 관리자** 화면에 적용했습니다. 디자인 원본은 `docs/design/index.html`에 보관합니다. 웹사이트는 Cloudflare Pages에 배포하며, Firebase `bread-notificator`는 자동 재고의 선택 연동입니다. 공개 배포와 영상 연결은 **[docs/DEPLOY.md](docs/DEPLOY.md)**에 정리했습니다. 코드 저장과 사이트 게시는 별도입니다.
+학생이 **실시간 영상에서 빵을 직접 확인하는 사이트**입니다. 제공받은 HTML 디자인을 적용한 슬롯 지도와 CCTV 상세 화면을 제공합니다. 공개 사이트에는 로그인·Firebase·재고 DB·자동 품절 판별이 필요하지 않습니다.
 
-라즈베리 파이에서 30초마다 촬영하고, 빈 칸과의 평균 채도 차이로 **재고 있음 / 품절**을 판별합니다. React는 Firebase Realtime Database를 직접 구독합니다. 별도 상시 백엔드, 유료 AI API, 상품명 인식 모델은 사용하지 않습니다.
+**[Cloudflare Pages 연결·게시 방법 → docs/DEPLOY.md](docs/DEPLOY.md)**
+
+- 사이트 소스: `web-dashboard/src/public-main.jsx`와 `Site.jsx`
+- Cloudflare 빌드: `npm --prefix web-dashboard ci && npm --prefix web-dashboard run build:public`
+- 출력 폴더: `web-dashboard/dist` / Node.js: `22`
+- 공통 영상 주소: Cloudflare 환경 변수 `VITE_CAMERA_STREAM_URL`에 공개 HTTPS MJPEG 주소 등록
+- 파이 실행: `bash scripts/preview-camera.sh --camera-backend opencv`
+- 영상 공개: `bash scripts/share-camera.sh` — 읽기 전용 포트 8082에 Cloudflare Tunnel 연결
+
+GitHub `main`을 Cloudflare Pages에 한 번 연결하면 이후 푸시할 때 자동 배포됩니다. 실제 계정 연결과 최초 게시가 필요하며, 사이트 파일만 올려서는 파이 영상이 송출되지 않습니다. 영상 프로그램과 터널은 파이에서 계속 실행해야 합니다.
+
+디자인 원본은 `docs/design/index.html`입니다. `school-bread-site.zip`은 영상 전용 공개 빌드이고, 루트 `index.html`과 `school-bread-preview.zip`은 이전 재고 기능의 오프라인 데모입니다. 아래의 Firebase·재고 분석 절차는 선택 기능을 보존한 설명이며 **현재 영상 사이트에는 필요하지 않습니다.**
 
 ## 먼저: 실제 카메라 연속 영상 확인
 

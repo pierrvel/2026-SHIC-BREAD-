@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "dev:public": "vite --mode camera --host 0.0.0.0",
     "build": "vite build",
     "build:public": "node scripts/build-public.mjs",
     "preview": "vite preview --host 0.0.0.0",

@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { freshMockData } from '../mockData';
+import { siteLayout } from '../siteLayout';
 import { inventoryState, mapSlots, stateLabel } from '../slotMap';
 import { saveStreamUrl } from '../cameraConnection';
-import { inventoryEnabled } from '../firebase';
-
-const fallback = freshMockData().config;
-
-export default function CameraView({ config, status, selectedId, streamUrl, onStreamUrl, onBack }) {
-  const selected = mapSlots(config || fallback).find((slot) => slot.id === selectedId) || mapSlots(config || fallback)[0];
+export default function CameraView({ config, status, selectedId, streamUrl, onStreamUrl, onBack, inventoryEnabled = false }) {
+  const slots = mapSlots(config || siteLayout);
+  const selected = slots.find((slot) => slot.id === selectedId) || slots[0];
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState('offline');
   const [dimensions, setDimensions] = useState(null);

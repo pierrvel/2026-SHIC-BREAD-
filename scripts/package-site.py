@@ -9,7 +9,7 @@ manifest = directory / 'public-build.json'
 if not manifest.exists():
     raise SystemExit('Run npm --prefix web-dashboard run build:public first.')
 state = json.loads(manifest.read_text())
-if state.get('hosting') != 'cloudflare-pages' or state.get('mockMode') is not False:
+if state.get('hosting') != 'cloudflare-pages' or state.get('mode') != 'camera' or state.get('mockMode') is not False or state.get('inventoryEnabled') is not False:
     raise SystemExit('Only a verified production build can be packaged.')
 archive = root / 'school-bread-site.zip'
 with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as bundle:

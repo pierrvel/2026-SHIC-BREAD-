@@ -1,14 +1,11 @@
 import { useState } from 'react';
-import { isSample, inventoryEnabled } from '../firebase';
-import { freshMockData } from '../mockData';
+import { siteLayout } from '../siteLayout';
 import { inventoryState, mapSlots, stateLabel } from '../slotMap';
 import ProductPhoto from './ProductPhoto';
 
-const initialLayout = freshMockData().config;
-
-export default function StudentView({ config, status, health, loading, error, connected, selectedId, onSelect, onCamera }) {
+export default function StudentView({ config, status, health, loading, error, connected, selectedId, onSelect, onCamera, inventoryEnabled = false, isSample = false }) {
   const [filter, setFilter] = useState('all');
-  const slots = mapSlots(config || initialLayout);
+  const slots = mapSlots(config || siteLayout);
   const selected = slots.find((slot) => slot.id === selectedId) || slots[0];
   const stocked = slots.filter((slot) => status?.slots?.[slot.id]?.in_stock === true).length;
   const visible = filter === 'stock' ? slots.filter((slot) => status?.slots?.[slot.id]?.in_stock === true) : slots;
@@ -42,7 +39,7 @@ export default function StudentView({ config, status, health, loading, error, co
         {inventoryEnabled && <><span className={`availability ${selectedState}`}>{stateLabel[selectedState]}</span><div className="selected-photo"><ProductPhoto source={item?.thumbnail} name={selected?.name || '선택한 칸'} /></div></>}
         <p>{selected ? `${selected.row}행 · ${selected.column}열 위치입니다. ` : ''}{inventoryEnabled ? '상품 사진을 확인하거나 실시간 카메라에서 직접 살펴보세요.' : '실시간 카메라 화면에서 같은 위치를 찾아 남아 있는 빵을 직접 확인하세요.'}</p>
         <div className="selection-actions"><button className="btn primary" onClick={onCamera}>실시간 카메라에서 확인 →</button><span className="minor">카메라 상세를 열 때 영상에 연결하고, 지도로 돌아오면 연결을 멈춥니다.</span></div>
-      </article><article className="panel help-panel"><h3>🧭 이렇게 이용해요</h3><div className="help-list"><div className="help-item"><b>01</b> 지도에서 궁금한 칸 선택</div><div className="help-item"><b>02</b> 상품 사진과 재고 확인</div><div className="help-item"><b>03</b> 필요하면 실시간 카메라 열기</div></div></article></aside>
+      </article><article className="panel help-panel"><h3>🧭 이렇게 이용해요</h3><div className="help-list"><div className="help-item"><b>01</b> 지도에서 궁금한 칸 선택</div><div className="help-item"><b>02</b> {inventoryEnabled ? '상품 사진과 재고 확인' : '실시간 카메라 열기'}</div><div className="help-item"><b>03</b> {inventoryEnabled ? '필요하면 실시간 카메라 열기' : '선택한 위치에서 빵 직접 확인'}</div></div></article></aside>
     </div>
   </section>;
 }

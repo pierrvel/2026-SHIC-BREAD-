@@ -19,6 +19,12 @@ with sync_playwright() as playwright:
     page.on('requestfailed', lambda request: closed.append(request.url))
     page.goto(base)
     expect(page.get_by_role('heading', name='우리 학교 빵 자판기, 한눈에 보기 🥐')).to_be_visible()
+    expect(page.get_by_role('button', name='관리자', exact=True)).to_have_count(0)
+    expect(page.get_by_role('button', name='재고 있는 칸', exact=True)).to_have_count(0)
+    expect(page.get_by_text('선택한 위치에서 빵 직접 확인', exact=False)).to_be_visible()
+    page.goto(base + '/#admin')
+    expect(page.get_by_role('heading', name='자판기 슬롯 지도', exact=True)).to_be_visible()
+    assert not any('firebase' in url or 'googleapis' in url or '/api/status' in url for url in requests), 'public site must not connect to inventory services'
     assert not any('/stream.mjpg' in url for url in requests), 'map must not open a stream'
     page.get_by_role('button', name='B2 5번 칸 선택', exact=True).click()
     expect(page.locator('.selected-number')).to_have_text('B2')

@@ -10,6 +10,6 @@ if [[ ! -f web-dashboard/dist/index.html || ! -f web-dashboard/dist/public-build
   echo '게시용 빌드가 없습니다. npm --prefix web-dashboard run build:public 을 먼저 실행하세요.' >&2
   exit 1
 fi
-node -e 'const c=require("./web-dashboard/dist/public-build.json");if(c.hosting!=="cloudflare-pages"||c.mockMode!==false)process.exit(1)'
+node -e 'const c=require("./web-dashboard/dist/public-build.json");if(c.hosting!=="cloudflare-pages"||c.mode!=="camera"||c.mockMode!==false||c.inventoryEnabled!==false)process.exit(1)'
 echo 'Cloudflare Pages의 bread-notificator 프로젝트에 정적 사이트를 배포합니다.'
 exec npx --yes wrangler@latest pages deploy web-dashboard/dist --project-name bread-notificator --branch main
