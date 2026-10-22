@@ -16,7 +16,8 @@ for arg in "$@"; do
   if [[ "$arg" == --camera-backend=* ]]; then camera_backend="${arg#*=}"; fi
   if [[ "$arg" == '--help' || "$arg" == '-h' ]]; then
     echo 'Usage: bash scripts/run-pi.sh [--sample] [--port 8000] [--interval 30] [--camera-backend opencv]'
-    echo 'Camera only: bash scripts/run-pi.sh --preview [--port 8081] [--fps 15] [--width 960] [--height 720]'
+    echo 'Camera only: bash scripts/run-pi.sh --preview [--port 8081] [--fps 60] [--width 1280] [--height 720] [--quality 90] [--denoise]'
+    echo 'Preview FPS range: 1..120; actual rate/resolution depend on camera capabilities, light and CPU/network load.'
     echo 'Default: real Pi camera. --sample explicitly selects synthetic images.'
     echo 'Web files are included; Node.js/npm and Firebase are not required for this LAN mode.'
     exit 0

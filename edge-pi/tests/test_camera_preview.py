@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from camera_preview import CameraSource, FrameStream, PreviewServer, SampleSource
+from camera_preview import CameraSource, FrameStream, PreviewServer, SampleSource, parse_args
 
 
 class CameraCompatibilityTests(unittest.TestCase):
@@ -68,17 +68,53 @@ class CameraCompatibilityTests(unittest.TestCase):
         with patch.dict(sys.modules, {'picamera2': SimpleNamespace(Picamera2=constructor)}), \
                 patch('camera_preview.cv2.VideoCapture') as capture:
             capture.return_value.read.return_value = (True, np.zeros((8, 8, 3), dtype=np.uint8))
-            source = CameraSource('opencv', 640, 480, 15, 2)
+            capture.return_value.get.return_value = 30.0
+            source = CameraSource('opencv', 1280, 720, 60, 2)
             capture.assert_called_once_with(2)
+            settings = capture.return_value.set.call_args_list
+            self.assertEqual(settings[0].args, (cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG')))
+            self.assertIn(unittest.mock.call(cv2.CAP_PROP_FPS, 60), settings)
+            self.assertEqual(source.device_fps, 30.0)
             self.assertEqual(source.read().shape, (8, 8, 3))
             source.close()
             capture.return_value.release.assert_called_once()
             constructor.assert_not_called()
 
 
+class QualityTests(unittest.TestCase):
+    def test_high_fps_full_hd_and_denoise_options(self):
+        with patch.object(sys, 'argv', ['camera_preview.py']):
+            args = parse_args()
+            self.assertEqual((args.width, args.height, args.fps, args.quality), (1280, 720, 60, 90))
+        with patch.object(sys, 'argv', ['camera_preview.py', '--fps', '60', '--width', '1920', '--height', '1080', '--denoise']):
+            args = parse_args()
+            self.assertTrue(args.denoise)
+            self.assertEqual((args.width, args.height, args.fps), (1920, 1080, 60))
+
+    def test_denoise_reduces_flat_region_noise_and_preserves_edge_without_mutating_source(self):
+        rng = np.random.default_rng(42)
+        image = np.full((96, 128, 3), 40.0)
+        image[:, 64:] = 210.0
+        noisy = np.clip(image + rng.normal(0, 10, image.shape), 0, 255).astype(np.uint8)
+        original = noisy.copy()
+        source = SimpleNamespace(read=lambda: noisy, close=lambda: None)
+        plain = FrameStream(source, quality=95)
+        clean = FrameStream(source, quality=95, denoise=True)
+        plain.capture()
+        clean.capture()
+        decode = lambda stream: cv2.imdecode(np.frombuffer(stream.frame, np.uint8), cv2.IMREAD_COLOR)
+        before, after = decode(plain), decode(clean)
+        self.assertLess(after[10:85, 10:50].std(), before[10:85, 10:50].std() * .65)
+        self.assertGreater(after[:, 80:].mean() - after[:, :48].mean(), 150)
+        np.testing.assert_array_equal(noisy, original)
+        self.assertTrue(clean.health()['denoise'])
+        self.assertEqual(clean.health()['quality'], 95)
+        self.assertGreater(clean.health()['jpeg_kb'], 0)
+
+
 class PreviewTests(unittest.TestCase):
     def setUp(self):
-        self.stream = FrameStream(SampleSource(320, 240), sample=True, fps=20)
+        self.stream = FrameStream(SampleSource(320, 240), sample=True, fps=20, width=320, height=240)
         self.stream.start()
         self.server = PreviewServer(('127.0.0.1', 0), self.stream)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)

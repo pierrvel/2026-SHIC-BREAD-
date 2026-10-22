@@ -13,6 +13,7 @@ with sync_playwright() as playwright:
     page.goto(base, wait_until='domcontentloaded')
     assert page.request.get(base + '/api/health').json()['sample'], 'Only test explicit synthetic mode'
     expect(page.locator('#source')).to_contain_text('합성 테스트 영상')
+    expect(page.locator('#settings')).to_contain_text('JPEG 품질')
     expect(page.locator('#status')).to_have_attribute('data-live', 'true')
     # Decode actual browser image pixels: HTTP/health success alone is insufficient.
     page.evaluate('''() => {
@@ -23,6 +24,10 @@ with sync_playwright() as playwright:
     page.wait_for_function('previewPixels() !== initialPixels', timeout=5000)
     page.get_by_role('button', name='좌우 반전').click()
     expect(page.locator('#video')).to_have_class('mirror')
+    page.get_by_role('button', name='전체 화면').click()
+    page.wait_for_function('document.fullscreenElement !== null')
+    page.evaluate('document.exitFullscreen()')
+    page.wait_for_function('document.fullscreenElement === null')
     page.get_by_role('button', name='다시 연결').click()
     expect(page.locator('#status')).to_have_attribute('data-live', 'true')
     page.set_viewport_size({'width': 375, 'height': 850})
