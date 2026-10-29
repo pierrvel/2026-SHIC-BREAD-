@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#fff8ef">
-  <meta name="description" content="재빵소 — 학교 빵 자판기의 진열대 위치를 고르고, 실시간 카메라로 빵이 남았는지 직접 확인하는 사이트. 갓 구운 빵 말고, 갓 확인한 빵.">
-  <meta property="og:title" content="재빵소 · 학교 빵 자판기 실시간 확인">
-  <meta property="og:description" content="갓 구운 빵 말고, 갓 확인한 빵. 자판기까지 가기 전에 여기서 먼저 확인해요.">
+  <meta name="description" content="재빵소 — 학교 빵 자판기 앞 카메라를 실시간으로 보여주는 사이트. 자판기까지 가기 전에 영상으로 먼저 확인해요.">
+  <meta property="og:title" content="재빵소 · 학교 빵 자판기 실시간 보기">
+  <meta property="og:description" content="갓 구운 빵 말고, 갓 확인한 빵. 자판기 앞 화면을 실시간으로 들여다봐요.">
   <meta property="og:type" content="website">
-  <title>재빵소 | 진열대</title>
+  <title>재빵소 | 실시간 보기</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect x='18' y='38' width='84' height='72' rx='16' fill='%23FBDCC4'/%3E%3Cpath d='M12 34Q12 24 22 24H98Q108 24 108 34V46H12Z' fill='%23F29E74'/%3E%3Ccircle cx='60' cy='82' r='20' fill='%23E3F4EA'/%3E%3Cpath d='M44 94C44 70 76 70 76 94Z' fill='%23E8A06A'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,216 +17,209 @@
     /* 재빵소 brand tokens — 차양 피치 · 가게 살구 · 밀가루 크림 · 창문 민트 · 확인 그린 · 잉크 */
     :root{color-scheme:light;
       --bg:#fff8ef;--white:#fff;--ink:#3a4a40;--soft:#56614f;--muted:#66705f;--line:#f0e4d6;
-      --peach:#ffe3cf;--apricot:#fbdcc4;--orange:#f29e74;--accent:#c9703f;--darkorange:#a35e35;--bun:#e8a06a;
+      --peach:#ffe3cf;--apricot:#fbdcc4;--orange:#f29e74;--accent:#c9703f;--darkorange:#a35e35;
       --mint:#e3f4ea;--mintbg:#eef7f1;--green:#3b8b6a;--sand:#f4ece1;
       --display:"Jua","Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
       --gentle:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-      --shadow:0 12px 36px rgba(120,84,50,.06),0 2px 6px rgba(120,84,50,.03)}
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
-    a{text-decoration:none;color:inherit}button,input{font:inherit}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--green);outline-offset:3px}
-    .app{max-width:1480px;margin:auto;padding:0 clamp(16px,3vw,48px) 32px}
-    .top{min-height:83px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px}
-    .brand{display:flex;align-items:center;gap:12px;flex:none}.brandmark{width:48px;height:48px;display:grid;place-items:center;border-radius:16px;background:var(--mintbg)}.brandmark svg{width:38px;height:38px}.brand b{display:block;font-family:var(--display);font-weight:400;letter-spacing:-.5px;font-size:27px;line-height:1.1}.brand b em{font-style:normal;color:var(--accent)}.brand small{display:block;color:var(--muted);font-weight:700;letter-spacing:2px;font-size:10px;margin-top:2px}
-    .top-nav{margin-left:auto;display:flex;background:var(--sand);border-radius:999px;padding:5px;gap:5px}.top-nav a{min-height:41px;min-width:132px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;color:#6b6458;white-space:nowrap}.top-nav a[aria-current="page"]{background:#fff;color:var(--ink);box-shadow:0 2px 6px #8b74521d}.top-nav svg{width:16px;height:16px}
-    .header-status{min-height:39px;display:inline-flex;align-items:center;gap:9px;border:1px solid #e5eee7;background:white;border-radius:50px;padding:8px 14px;font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap}.dot{width:8px;height:8px;border-radius:100%;background:#b9c0b8;flex:none}.dot.on{background:var(--green);box-shadow:0 0 0 4px #3b8b6a1f}.dot.wait{background:#e59a4c}.dot.fail{background:#c9564c}
-    .page[hidden]{display:none!important}.hero{padding:30px 1px 25px;display:flex;align-items:end;justify-content:space-between;gap:15px}.eyebrow{display:flex;align-items:center;gap:8px;color:var(--darkorange);font-size:11px;font-weight:700;letter-spacing:1.5px}.eyebrow:before{content:"";display:block;width:17px;height:2px;background:var(--orange);border-radius:2px}h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,3.2vw,44px);line-height:1.25;letter-spacing:-1px;margin:12px 0 8px}.hero p{margin:0;font-family:var(--gentle);font-size:16px;line-height:1.65;color:var(--soft)}.hero-note{font-size:12px;font-weight:700;color:#6b5a44;background:var(--sand);padding:11px 14px;border-radius:12px;white-space:nowrap}
-    .panel{background:var(--white);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);min-width:0}.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.head-title{display:flex;align-items:center;gap:11px;min-width:0}.head-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;flex:none;background:var(--peach);color:var(--darkorange)}.head-icon.green{background:var(--mint);color:var(--green)}.head-icon svg{width:22px;height:22px}.section-head h2{font-family:var(--display);font-weight:400;font-size:21px;letter-spacing:-.3px;margin:0}.section-head p{font-size:12px;line-height:1.55;color:var(--muted);margin:4px 0 0}.tag{padding:7px 10px;background:var(--mintbg);color:#3f6e55;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap}
-    .btn{min-height:46px;padding:11px 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;font-size:13px;font-weight:700;color:var(--ink);border:1px solid #e3e9e2;background:#fff;transition:transform .16s,filter .16s}.btn:hover{filter:brightness(.97);transform:translateY(-1px)}.btn svg{width:18px;height:18px;flex:none}.btn.primary{background:var(--green);border-color:var(--green);color:#fff}.btn.soft{background:#f7f9f5}.btn.linklike{background:#fff6ee;border-color:#f3e1d1;color:var(--darkorange)}
-    /* 진열대(슬롯 지도)가 메인 — 영상은 실시간 보기에서만 */
-    .map-layout{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(282px,.82fr);gap:18px;align-items:stretch}
-    .map-panel{padding:23px 25px 25px;display:flex;flex-direction:column;gap:17px}.map-stage{flex:1;position:relative;border:1px solid #efe5d6;border-radius:20px;background:radial-gradient(ellipse at 15% 6%,#ffe3cf 0,transparent 45%),radial-gradient(ellipse at 90% 95%,#e3f4ea 0,transparent 45%),#fbf4ea;padding:24px 28px 26px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}.map-stage:before,.map-stage:after{position:absolute;content:'';width:18px;height:18px;border-radius:50%;background:#f6c3a3;right:8%;top:13%}.map-stage:after{left:7%;bottom:14%;right:auto;top:auto;background:#b5dfc8;width:14px;height:14px}
-    .machine-shell{--py:18px;--px:20px;position:relative;z-index:1;max-width:690px;width:100%;border:10px solid #f4b996;border-bottom:17px solid #efa57e;background:#fffcf7;border-radius:23px 23px 16px 16px;padding:var(--py) var(--px) 15px;box-shadow:12px 17px 0 #e2b08f2e,0 20px 35px #b4825233;overflow:hidden}
-    .awning{height:26px;margin:calc(var(--py)*-1) calc(var(--px)*-1) 14px;background:repeating-linear-gradient(90deg,var(--orange) 0 28px,var(--peach) 28px 56px);-webkit-mask:linear-gradient(#000 0 0) top/100% 12px no-repeat,radial-gradient(circle at 14px 0,#000 13.5px,transparent 14px) 0 12px/28px 14px repeat-x;mask:linear-gradient(#000 0 0) top/100% 12px no-repeat,radial-gradient(circle at 14px 0,#000 13.5px,transparent 14px) 0 12px/28px 14px repeat-x}
-    .machine-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}.machine-top strong{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:.5px;color:#8a5a3a}.machine-top span{font-size:11px;background:var(--peach);color:#8a5a3a;padding:7px 10px;border-radius:8px;font-weight:700}.slot-scroller{overflow-x:auto;max-width:100%;padding:2px 2px 8px}.slot-grid{--cols:4;display:grid;grid-template-columns:repeat(var(--cols),minmax(87px,1fr));gap:11px;min-width:max-content;width:100%}.slot{position:relative;min-width:0;min-height:111px;border:1px solid #eadfce;border-bottom:5px solid #e6dcc9;border-radius:16px;background:linear-gradient(160deg,#fcf6ec,#f5eee0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#8a6f57;transition:background .18s,transform .18s,border-color .18s,box-shadow .18s}.slot:nth-child(4n+2){background:linear-gradient(140deg,#f3f7ee,#edf3e9)}.slot:nth-child(4n+4){background:linear-gradient(140deg,#fdf0e6,#f8eadf)}.slot:hover{transform:translateY(-2px);border-color:#9fd3b8}.slot[aria-pressed="true"]{color:#2f7254;background:#ddf4e7!important;border-color:#85c8a7;border-bottom-color:#60ad86;box-shadow:0 0 0 3px #c4e9d4}.slot-label{position:absolute;top:9px;left:11px;font-size:11px;font-weight:700}.slot-glyph{width:38px;height:33px;display:grid;place-items:center}.slot-glyph svg{width:32px;height:32px;opacity:.75}.slot strong{font-size:12px;font-weight:700;letter-spacing:.3px}.machine-base{height:14px;background:var(--apricot);border-radius:5px;margin-top:13px}.map-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;margin-top:13px;color:var(--muted);font-size:11px;font-weight:700}.map-footer .legend{display:flex;align-items:center;gap:7px}.legend-square{width:13px;height:13px;display:inline-block;background:#ddf4e7;border:1px solid #75ba9a;border-radius:3px}.map-footnote{margin:0;color:var(--muted);display:flex;align-items:center;gap:8px;line-height:1.6;font-size:12px}.map-footnote svg{flex:none;width:16px;height:16px;color:#6fa886}
-    .map-sidebar{display:flex;flex-direction:column;gap:14px}.selected-panel{padding:25px;display:flex;flex-direction:column;gap:18px;flex:1}.overline{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px}.selected-number{font-family:var(--display);font-weight:400;font-size:clamp(58px,7vw,90px);line-height:1;letter-spacing:-2px;color:var(--green)}.selected-panel h3{font-family:var(--display);font-weight:400;margin:0;font-size:22px;letter-spacing:-.3px}.selected-panel p{margin:0;font-size:13px;line-height:1.85;color:var(--soft)}.status-explain{padding:14px;border:1px solid #dcebe0;background:#f4faf6;border-radius:14px;display:flex;gap:10px;color:#3f6e55;font-size:12px;line-height:1.65}.status-explain svg{width:20px;height:20px;flex:none}.selected-panel .btn{width:100%;min-height:53px;font-size:14px}.selection-actions{margin-top:auto;display:flex;flex-direction:column;gap:10px}.minor{font-size:11px;color:var(--muted);line-height:1.65}.help-panel{padding:20px 23px}.help-panel h3{font-family:var(--display);font-weight:400;font-size:18px;margin:0 0 12px}.help-list{display:grid;gap:10px}.help-item{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--soft)}.help-item b{flex:none;display:grid;place-items:center;background:var(--peach);color:var(--darkorange);width:26px;height:26px;border-radius:9px;font-size:11px}
-    /* 실시간 보기는 별도 상세 화면 */
-    .camera-layout{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(274px,.7fr);gap:18px}.camera-panel{padding:23px;display:flex;flex-direction:column;gap:15px}.mode-pill{font-size:11px;font-weight:700;color:var(--darkorange);background:#ffede0;padding:8px 11px;border-radius:9px;white-space:nowrap}
-    .viewport{position:relative;aspect-ratio:1.6;min-height:320px;border-radius:20px;background:radial-gradient(ellipse at 20% 10%,#ffe3cf 0,transparent 55%),radial-gradient(ellipse at 85% 87%,#d8f0e2 0,transparent 45%),#f7efe3;overflow:hidden;isolation:isolate;display:flex;align-items:center;justify-content:center}.viewport.is-streaming{background:#17211f}.live-img{display:none;width:100%;height:100%;object-fit:contain;background:#17211f}.viewport.is-streaming .live-img{display:block}.viewport.is-streaming .mock-scene{display:none}
-    .mock-scene{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;padding:25px 46px}.mock-machine{height:84%;width:min(68%,370px);border:8px solid #f4b996;border-bottom:15px solid #efa57e;border-radius:19px 19px 13px 13px;background:#fffcf7;box-shadow:13px 15px 0 #dcb08b30,0 12px 25px #be855044;display:flex;flex-direction:column;gap:11px;padding:12px 14px 8px;transform:rotate(-1deg)}.mock-head{display:flex;align-items:center;justify-content:space-between;color:#8a5a3a;font-family:var(--display);font-size:13px;letter-spacing:.5px}.mock-head:after{content:'PREVIEW';font-family:"IBM Plex Sans KR",sans-serif;font-weight:700;padding:4px 6px;border-radius:5px;font-size:8px;color:#7a5a3e;background:var(--peach);letter-spacing:1px}.mock-rack{flex:1;display:grid;min-height:0;grid-template-columns:repeat(var(--mock-cols,4),minmax(0,1fr));grid-template-rows:repeat(var(--mock-rows,3),minmax(0,1fr));gap:6px}.sample-slot{position:relative;display:flex;justify-content:center;align-items:center;min-width:0;border:1px solid #eadfce;border-radius:8px;background:#f8f0e4;overflow:hidden}.sample-slot:nth-child(3n){background:#f1f5ec}.sample-slot:nth-child(4n){background:#fcefe5}.sample-slot small{position:absolute;top:3px;left:4px;font-size:9px;font-weight:700;color:#9b8268}.food{font-size:clamp(17px,2.6vw,32px)}.mock-base{height:11px;border-radius:4px;background:var(--apricot)}.mock-control{width:57px;height:57%;margin-left:15px;background:var(--peach);border:5px solid #f4b996;border-radius:12px;padding:13px 8px;display:flex;align-items:center;flex-direction:column;gap:12px;transform:rotate(-1deg)}.mock-screen{height:35px;width:100%;border:3px solid #a5c8b6;border-radius:5px;background:#89a999}.mock-keys{display:grid;width:100%;grid-template-columns:repeat(2,1fr);gap:5px}.mock-keys i{height:9px;border-radius:3px;background:#fff8ef}
-    .video-ribbon{position:absolute;top:14px;left:14px;display:flex;gap:8px;align-items:center;background:#fffcf6ee;padding:9px 12px;border-radius:11px;color:var(--ink);font-weight:700;font-size:12px;z-index:3}.viewport.is-streaming .video-ribbon{color:#fff;background:#182320df}.watermark{position:absolute;bottom:17px;left:50%;transform:translateX(-50%);max-width:calc(100% - 22px);text-align:center;background:#fffaf0ee;border:1px solid #f1dcc6;border-radius:11px;padding:9px 12px;color:#7a5a3e;font-size:11px;font-weight:700;white-space:nowrap}.viewport.is-streaming .watermark{display:none}.overlay-error{display:none;position:absolute;bottom:18px;left:18px;right:18px;border:1px solid #ecd3c1;background:#fff7eff5;color:#994e38;padding:14px;border-radius:14px;text-align:center;font-size:12px;line-height:1.6;z-index:4}.viewport.has-error .overlay-error{display:block}.action-row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.action-row .spacer{flex:1}.stream-note{display:flex;gap:9px;align-items:flex-start;background:#f4faf6;color:var(--soft);padding:13px;border-radius:14px;font-size:12px;line-height:1.65}.stream-note svg{width:18px;height:18px;flex:none;color:#5f9d7e;margin-top:1px}
-    .camera-side{display:flex;flex-direction:column;gap:15px}.camera-info{padding:26px;display:flex;flex-direction:column;gap:17px;flex:1}.camera-info h3{font-family:var(--display);font-weight:400;font-size:22px;margin:0;letter-spacing:-.3px}.camera-info p{font-size:13px;color:var(--soft);line-height:1.85;margin:0}.info-badge{display:inline-flex;align-items:center;gap:7px;background:var(--mint);color:#2f7254;padding:10px 12px;font-size:12px;font-weight:700;border-radius:10px;align-self:flex-start}.camera-info .btn{width:100%;margin-top:auto}.camera-hint{padding:18px 21px;background:#fff1e4;border:1px solid #f3e3d1;border-radius:18px;color:#7a5a3e;font-size:12px;line-height:1.8}.camera-hint strong{display:block;margin-bottom:3px;font-family:var(--display);font-weight:400;font-size:15px}
-    .howto{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:17px}.step{background:#fff;border:1px solid var(--line);border-radius:18px;padding:17px 19px;display:flex;align-items:center;gap:13px}.step-number{display:grid;place-items:center;background:var(--peach);color:var(--darkorange);font-family:var(--display);font-size:17px;width:38px;height:38px;border-radius:12px;flex:none}.step:nth-child(2) .step-number{background:var(--mint);color:#2f7254}.step:nth-child(3) .step-number{background:var(--apricot);color:#7d4a2a}.step strong{display:block;font-size:13px}.step p{margin:4px 0 0;font-size:12px;color:var(--muted)}
-    footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:11px;line-height:1.65;padding:22px 2px 0}footer strong{font-family:var(--display);font-weight:400;font-size:15px;color:var(--ink)}footer .slogan{font-family:var(--gentle);font-size:13px}
-    dialog{border:0;border-radius:24px;width:min(510px,calc(100vw - 32px));max-height:calc(100vh - 44px);padding:0;overflow:auto;box-shadow:0 22px 70px #1e342e37;color:var(--ink)}dialog::backdrop{background:#1c282073;backdrop-filter:blur(3px)}.dialog-content{padding:25px}.dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:21px}.dialog-head h2{font-family:var(--display);font-weight:400;font-size:23px;margin:0}.dialog-head p{color:var(--muted);font-size:12px;margin:5px 0 0}.close{border:0;background:#f3f5ef;color:#4f5c50;font-size:22px;border-radius:10px;width:36px;height:36px;flex:none}.field{margin-bottom:17px}.field label{display:block;font-weight:700;font-size:12px;margin-bottom:8px}.field input{min-height:45px;border:1px solid #dfe6de;border-radius:11px;padding:11px 12px;width:100%;color:var(--ink);font-size:13px}.field small{display:block;font-size:11px;color:var(--muted);line-height:1.65;margin-top:7px}.two-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.alert{font-size:11px;line-height:1.7;color:#7a5a3e;background:#fff6eb;border:1px solid #f2e1c9;border-radius:12px;padding:12px}.validation{color:#b14d3f;font-size:12px;min-height:17px}.dialog-actions{display:flex;gap:9px;justify-content:space-between;flex-wrap:wrap}
-    @media(max-width:1120px){.app{padding-inline:24px}.map-layout{grid-template-columns:minmax(0,1.65fr) minmax(255px,.78fr);gap:14px}.map-panel{padding:18px}.map-stage{padding:18px}.machine-shell{--py:13px;--px:13px;border-width:8px;border-bottom-width:15px;padding:var(--py) var(--px)}.slot-grid{grid-template-columns:repeat(var(--cols),minmax(72px,1fr));gap:8px}.slot{min-height:96px}.selected-panel{padding:20px}.camera-layout{gap:14px}.camera-panel{padding:18px}.camera-info{padding:20px}.hero-note{display:none}}
-    @media(max-width:810px){.header-status{display:none}.top{justify-content:space-between}.top-nav{margin-left:auto}.map-layout,.camera-layout{grid-template-columns:1fr}.map-stage{padding:22px}.slot{min-height:120px}.map-sidebar{display:grid;grid-template-columns:1.1fr .9fr;align-items:stretch}.selected-panel{min-height:280px}.help-panel{display:flex;flex-direction:column;justify-content:center}.camera-side{display:grid;grid-template-columns:1fr 1fr}.camera-info{min-height:250px}.camera-hint{display:flex;flex-direction:column;justify-content:center}.viewport{aspect-ratio:1.7;min-height:350px}}
-    @media(max-width:600px){.app{padding:0 14px 25px}.top{min-height:69px;gap:8px;flex-wrap:wrap;padding:10px 0}.brandmark{width:40px;height:40px;border-radius:13px}.brandmark svg{width:32px;height:32px}.brand b{font-size:23px}.brand small{font-size:8px;letter-spacing:1.5px}.top-nav{padding:3px;gap:2px}.top-nav a{min-height:36px;min-width:0;padding:7px 11px;font-size:12px;gap:5px}.top-nav svg{width:14px;height:14px}.hero{padding:25px 2px 20px}.eyebrow{font-size:10px}h1{font-size:29px;letter-spacing:-.8px}.hero p{font-size:14px}.map-panel,.camera-panel{padding:14px;border-radius:20px}.map-stage{padding:12px;min-height:347px}.machine-shell{--py:10px;--px:9px;padding:var(--py) var(--px) 10px;border-width:6px;border-bottom-width:13px;border-radius:16px}.awning{height:20px;margin-bottom:10px;background-size:auto;-webkit-mask-size:100% 9px,22px 11px;mask-size:100% 9px,22px 11px;-webkit-mask-position:top,0 9px;mask-position:top,0 9px;background:repeating-linear-gradient(90deg,var(--orange) 0 22px,var(--peach) 22px 44px);-webkit-mask-image:linear-gradient(#000 0 0),radial-gradient(circle at 11px 0,#000 10.5px,transparent 11px);mask-image:linear-gradient(#000 0 0),radial-gradient(circle at 11px 0,#000 10.5px,transparent 11px)}.machine-top{margin-bottom:10px}.machine-top strong{font-size:13px}.machine-top span{font-size:9px;padding:5px 7px}.slot-grid{grid-template-columns:repeat(var(--cols),minmax(62px,1fr));gap:5px}.slot{min-height:72px;border-radius:10px;border-bottom-width:3px;gap:1px}.slot-label{font-size:9px;top:5px;left:6px}.slot-glyph{height:25px;width:26px}.slot-glyph svg{width:22px;height:22px}.slot strong{font-size:9px}.machine-base{height:9px;margin-top:7px}.map-footer{font-size:10px;margin-top:9px}.section-head h2{font-size:18px}.section-head p{font-size:11px}.head-icon{width:36px;height:36px;border-radius:11px}.head-icon svg{width:19px;height:19px}.tag{font-size:10px}.map-sidebar,.camera-side{display:flex}.selected-panel,.help-panel,.camera-info{padding:19px;border-radius:20px;min-height:0}.selected-panel{gap:14px}.selected-number{font-size:60px}.selected-panel h3{font-size:19px}.selected-panel p,.camera-info p{font-size:12px}.help-panel h3{margin-bottom:10px}.camera-info{gap:11px}.camera-info .btn{margin-top:6px}.camera-hint{font-size:11px}.viewport{min-height:315px;aspect-ratio:1.2}.mock-scene{padding:20px 10px}.mock-machine{width:71%;height:76%;border-width:6px;border-bottom-width:12px;padding:8px;gap:6px}.mock-control{width:42px;padding:11px 5px;border-width:4px;margin-left:7px}.mock-rack{gap:4px}.sample-slot small{font-size:7px}.food{font-size:clamp(15px,5vw,25px)}.watermark{white-space:normal;font-size:10px}.action-row .btn{flex:1;font-size:11px;padding:9px 8px}.action-row .spacer{display:none}.howto{grid-template-columns:1fr;gap:8px}.step{padding:12px 15px}.step-number{width:34px;height:34px}.stream-note{font-size:11px}footer{font-size:10px}.dialog-content{padding:20px}}
-    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
-    :fullscreen{padding:0;background:#131b18!important}:fullscreen .live-img{height:100%;width:100%}
+      --shadow:0 12px 36px rgba(120,84,50,.07),0 2px 6px rgba(120,84,50,.03)}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
+    a{color:inherit;text-decoration:none}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}
+    a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--green);outline-offset:3px}
+    .app{max-width:1180px;margin:auto;padding:0 clamp(16px,3vw,40px) 32px}
+
+    /* 헤더: 브랜드 + 연결 상태 */
+    .top{min-height:80px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .brand{display:flex;align-items:center;gap:12px;flex:none}.brandmark{width:48px;height:48px;display:grid;place-items:center;border-radius:16px;background:var(--mintbg)}.brandmark svg{width:38px;height:38px}
+    .brand b{display:block;font-family:var(--display);font-weight:400;letter-spacing:-.5px;font-size:27px;line-height:1.1}.brand b em{font-style:normal;color:var(--accent)}.brand small{display:block;color:var(--muted);font-weight:700;letter-spacing:2px;font-size:10px;margin-top:2px}
+    .status-chip{min-height:40px;display:inline-flex;align-items:center;gap:9px;border:1px solid #e5eee7;background:#fff;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;white-space:nowrap}
+    .dot{width:9px;height:9px;border-radius:50%;background:#aab3aa;flex:none}.dot.on{background:var(--green);box-shadow:0 0 0 4px #3b8b6a1f}.dot.wait{background:#e59a4c}.dot.fail{background:#c9564c}
+
+    .hero{padding:30px 2px 24px}.eyebrow{display:flex;align-items:center;gap:8px;color:var(--darkorange);font-size:11px;font-weight:700;letter-spacing:1.5px}.eyebrow:before{content:"";display:block;width:17px;height:2px;background:var(--orange);border-radius:2px}
+    h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,3.4vw,44px);line-height:1.25;letter-spacing:-1px;margin:12px 0 8px}.hero p{margin:0;max-width:640px;font-family:var(--gentle);font-size:16px;line-height:1.65;color:var(--soft)}
+
+    /* 가게 창문 = 실시간 영상 */
+    .awning{position:relative;z-index:2;height:36px;margin:0 -10px -8px;border-radius:20px 20px 0 0;background:linear-gradient(90deg,var(--peach) 25%,var(--orange) 25% 75%,var(--peach) 75%) center/72px 100% repeat-x;-webkit-mask:linear-gradient(#000 0 0) top/100% 18px no-repeat,radial-gradient(circle at 50% 0,#000 17.5px,transparent 18px) center 18px/36px 18px repeat-x;mask:linear-gradient(#000 0 0) top/100% 18px no-repeat,radial-gradient(circle at 50% 0,#000 17.5px,transparent 18px) center 18px/36px 18px repeat-x}
+    .window{background:var(--apricot);padding:14px;border-radius:30px;box-shadow:var(--shadow),0 18px 40px rgba(180,130,82,.16)}
+    .viewport{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at 18% 10%,#fff 0,transparent 50%),radial-gradient(ellipse at 85% 92%,#cfeadb 0,transparent 50%),var(--mint)}
+    .viewport[data-state="error"]{background:radial-gradient(ellipse at 18% 10%,#fff 0,transparent 50%),#fdeee3}
+    .viewport[data-state="connecting"],.viewport[data-state="live"]{background:#17211f}
+    .live-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none}
+    .viewport[data-state="connecting"] .live-img,.viewport[data-state="live"] .live-img{display:block}
+    .placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
+    .viewport[data-state="connecting"] .placeholder,.viewport[data-state="live"] .placeholder{display:none}
+    .placeholder svg{width:92px;height:92px}.placeholder h2{font-family:var(--display);font-weight:400;font-size:clamp(22px,2.6vw,30px);letter-spacing:-.3px;margin:4px 0 0}.placeholder p{margin:0;max-width:440px;font-family:var(--gentle);font-size:15px;line-height:1.6;color:var(--soft)}.placeholder .btn{margin-top:8px}
+    .connecting{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;align-items:center;gap:10px;padding:12px 18px;border-radius:999px;background:#fff8efee;font-size:13px;font-weight:700;white-space:nowrap}
+    .viewport[data-state="connecting"] .connecting{display:inline-flex}.connecting .dot{animation:pulse 1.2s ease-in-out infinite}@keyframes pulse{50%{opacity:.3}}
+    .live-badge{display:none;position:absolute;top:14px;left:14px;z-index:3;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:#182320d9;color:#fff;font-size:12px;font-weight:700;letter-spacing:1px}
+    .viewport[data-state="live"] .live-badge{display:inline-flex}.live-badge i{width:8px;height:8px;border-radius:50%;background:#e5534b}
+    .viewport:fullscreen{aspect-ratio:auto;border-radius:0;background:#131b18}
+
+    .btn{min-height:46px;padding:11px 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;font-size:14px;font-weight:700;color:var(--ink);border:1px solid #e3e9e2;background:#fff;transition:transform .16s,filter .16s}.btn:hover:not(:disabled){filter:brightness(.97);transform:translateY(-1px)}.btn svg{width:18px;height:18px;flex:none}.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}.controls .spacer{flex:1}
+
+    /* 안내 카드 */
+    .notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:28px}
+    .note{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start}
+    .note-icon{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;background:var(--mint);color:var(--green)}.note-icon.peach{background:var(--peach);color:var(--darkorange)}.note-icon.apricot{background:var(--apricot);color:#7d4a2a}.note-icon svg{width:21px;height:21px}
+    .note h3{font-family:var(--display);font-weight:400;font-size:18px;margin:2px 0 4px}.note p{margin:0;font-size:13px;line-height:1.6;color:var(--soft)}
+
+    footer{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;color:var(--muted);font-size:11px;line-height:1.65;margin-top:30px;padding-top:14px;border-top:1px solid var(--line)}footer strong{font-family:var(--display);font-weight:400;font-size:15px;color:var(--ink)}footer .slogan{font-family:var(--gentle);font-size:13px}
+    .footer-right{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap}.text-btn{min-height:44px;border:0;background:none;padding:0;color:var(--darkorange);font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+
+    dialog{border:0;border-radius:24px;width:min(510px,calc(100vw - 32px));max-height:calc(100vh - 44px);padding:0;overflow:auto;box-shadow:0 22px 70px #1e342e37;color:var(--ink)}dialog::backdrop{background:#1c282073;backdrop-filter:blur(3px)}.dialog-content{padding:25px}.dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:21px}.dialog-head h2{font-family:var(--display);font-weight:400;font-size:23px;margin:0}.dialog-head p{color:var(--muted);font-size:12px;margin:5px 0 0}.close{border:0;background:#f3f5ef;color:#4f5c50;font-size:22px;border-radius:10px;width:40px;height:40px;flex:none}.field{margin-bottom:17px}.field label{display:block;font-weight:700;font-size:12px;margin-bottom:8px}.field input{min-height:45px;border:1px solid #dfe6de;border-radius:11px;padding:11px 12px;width:100%;color:var(--ink);font-size:13px}.field small{display:block;font-size:11px;color:var(--muted);line-height:1.65;margin-top:7px}.alert{font-size:11px;line-height:1.7;color:#7a5a3e;background:#fff6eb;border:1px solid #f2e1c9;border-radius:12px;padding:12px}.validation{color:#b14d3f;font-size:12px;min-height:17px}.dialog-actions{display:flex;gap:9px;justify-content:space-between;flex-wrap:wrap}
+
+    @media(max-width:760px){.notes{grid-template-columns:1fr;gap:10px}.awning{height:28px;margin:0 -6px -6px;border-radius:16px 16px 0 0;background-size:48px 100%;-webkit-mask-size:100% 16px,24px 12px;mask-size:100% 16px,24px 12px;-webkit-mask-position:top,center 16px;mask-position:top,center 16px;-webkit-mask-image:linear-gradient(#000 0 0),radial-gradient(circle at 50% 0,#000 11.5px,transparent 12px);mask-image:linear-gradient(#000 0 0),radial-gradient(circle at 50% 0,#000 11.5px,transparent 12px)}.window{padding:8px;border-radius:22px}.viewport{border-radius:15px;aspect-ratio:4/3}.controls .btn{flex:1 1 0;padding:10px 8px;font-size:13px}.controls .spacer{display:none}.placeholder svg{width:70px;height:70px}.placeholder p{font-size:14px}}
+    @media(max-width:480px){.top{min-height:68px}.brandmark{width:40px;height:40px;border-radius:13px}.brandmark svg{width:32px;height:32px}.brand b{font-size:23px}.brand small{font-size:8px;letter-spacing:1.5px}.status-chip{min-height:36px;padding:7px 12px;font-size:12px}.hero{padding:22px 2px 18px}h1{font-size:28px;letter-spacing:-.8px}.hero p{font-size:14px}.placeholder{gap:6px;padding:16px}.placeholder svg{width:56px;height:56px}.placeholder h2{font-size:20px}.placeholder p{font-size:13px}.placeholder .btn{margin-top:4px;min-height:44px}.controls{gap:8px}.controls .btn{font-size:12px;gap:6px}.note{padding:15px 16px}footer{font-size:10px}.dialog-content{padding:20px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
   </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <a class="brand" href="#slots" aria-label="재빵소 진열대 홈">
+    <a class="brand" href="./" aria-label="재빵소 홈">
       <span class="brandmark" aria-hidden="true">
         <svg viewBox="0 0 120 120"><rect x="18" y="38" width="84" height="72" rx="16" fill="#FBDCC4"/><path d="M36 24H60V44A12 12 0 0 1 36 44Z" fill="#FFF8EF" stroke="#F29E74" stroke-width="4" stroke-linejoin="round"/><path d="M84 24H98Q108 24 108 34V44A12 12 0 0 1 84 44Z" fill="#FFF8EF" stroke="#F29E74" stroke-width="4" stroke-linejoin="round"/><path d="M12 34Q12 24 22 24H36V44A12 12 0 0 1 12 44Z" fill="#F29E74"/><path d="M60 24H84V44A12 12 0 0 1 60 44Z" fill="#F29E74"/><circle cx="60" cy="82" r="20" fill="#E3F4EA" stroke="#FFF8EF" stroke-width="5"/><path d="M47 90C47 73 73 73 73 90Q73 93 70 93H50Q47 93 47 90Z" fill="#E8A06A"/><circle cx="92" cy="100" r="13" fill="#3B8B6A" stroke="#EEF7F1" stroke-width="4"/><path d="M86 100L90.5 104.5L98 96" fill="none" stroke="#FFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
-      <span><b>재<em>빵</em>소</b><small>SCHOOL BREAD STOCK</small></span>
+      <span><b>재<em>빵</em>소</b><small>SCHOOL BREAD LIVE</small></span>
     </a>
-    <nav class="top-nav" aria-label="화면 선택">
-      <a href="#slots" data-nav="slots" aria-current="page">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M9.5 3v18M14.5 3v18"/></svg>진열대
-      </a>
-      <a href="#camera" data-nav="camera">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="m16 10 5-3v10l-5-3"/></svg>실시간 보기
-      </a>
-    </nav>
-    <div class="header-status" role="status" aria-live="polite"><span class="dot" id="headerDot"></span><span id="headerStatus">실시간 보기에서 확인</span></div>
+    <div class="status-chip" role="status" aria-live="polite"><span class="dot" id="statusDot"></span><span id="statusText">영상 연결 전</span></div>
   </header>
+
   <main>
-    <!-- SCREEN 1: 진열대 (기본 화면) -->
-    <section class="page" id="slots" aria-labelledby="slotsTitle">
-      <div class="hero"><div><div class="eyebrow">TODAY'S SHELF · 오늘의 진열대</div><h1 id="slotsTitle">오늘의 빵, 갓 확인하러 가볼까요?</h1><p>궁금한 칸을 고른 다음, 실시간 보기에서 빵이 남아 있는지 직접 들여다봐요.</p></div><span class="hero-note">갓 구운 빵 말고, 갓 확인한 빵</span></div>
-      <div class="map-layout">
-        <article class="panel map-panel">
-          <div class="section-head"><div class="head-title"><span class="head-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="2.5" width="17" height="19" rx="2.5"/><path d="M3.5 9h17M3.5 15h17M9 9v12M15 9v12"/></svg></span><div><h2>진열대 지도</h2><p>확인하고 싶은 칸을 터치하거나 클릭하세요.</p></div></div><span class="tag">위치 안내용 · 예시 배치</span></div>
-          <div class="map-stage">
-            <div class="machine-shell">
-              <div class="awning" aria-hidden="true"></div>
-              <div class="machine-top"><strong>재빵소 진열대</strong><span>칸을 골라요</span></div>
-              <div class="slot-scroller" role="region" aria-label="진열대 지도 (열이 많으면 가로로 스크롤)"><div class="slot-grid" id="slotGrid" role="group" aria-label="자판기 칸 위치 선택"></div></div>
-              <div class="machine-base"></div>
-            </div>
-            <div class="map-footer"><span class="legend"><i class="legend-square"></i>선택한 위치</span><span id="gridInfo">배치도 예시 · 3행 × 4열</span></div>
+    <div class="hero">
+      <div class="eyebrow">LIVE WINDOW · 가게 창문</div>
+      <h1 id="liveTitle">자판기 앞, 지금 바로 들여다봐요</h1>
+      <p>학교 빵 자판기 앞 카메라 화면을 실시간으로 보여줘요. 빵이 남았는지는 영상으로 직접 확인해 주세요.</p>
+    </div>
+
+    <section class="stage" aria-labelledby="liveTitle">
+      <div class="awning" aria-hidden="true"></div>
+      <div class="window">
+        <div class="viewport" id="viewport" data-state="idle">
+          <img class="live-img" id="liveImg" alt="학교 빵 자판기 앞 실시간 카메라 영상">
+          <div class="placeholder">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><rect x="18" y="38" width="84" height="72" rx="16" fill="#FBDCC4"/><path d="M36 24H60V44A12 12 0 0 1 36 44Z" fill="#FFF8EF" stroke="#F29E74" stroke-width="3" stroke-linejoin="round"/><path d="M84 24H98Q108 24 108 34V44A12 12 0 0 1 84 44Z" fill="#FFF8EF" stroke="#F29E74" stroke-width="3" stroke-linejoin="round"/><path d="M12 34Q12 24 22 24H36V44A12 12 0 0 1 12 44Z" fill="#F29E74"/><path d="M60 24H84V44A12 12 0 0 1 60 44Z" fill="#F29E74"/><circle cx="60" cy="82" r="20" fill="#FFF8EF" stroke="#FFF8EF" stroke-width="5"/><path d="M47 90C47 73 73 73 73 90Q73 93 70 93H50Q47 93 47 90Z" fill="#E8A06A"/></svg>
+            <h2 id="phTitle">아직 창문이 닫혀 있어요</h2>
+            <p id="phText">카메라 영상 주소가 연결되면 이곳에 자판기 앞 화면이 실시간으로 보여요.</p>
+            <button type="button" class="btn primary" id="phAction" data-action="settings">영상 주소 설정</button>
           </div>
-          <p class="map-footnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg>실제 자판기의 칸 수와 위치에 맞게 수정할 수 있으며, 이 지도에는 재고를 자동 판별한 결과가 표시되지 않아요.</p>
-        </article>
-        <aside class="map-sidebar">
-          <article class="panel selected-panel" aria-live="polite">
-            <div class="overline">SELECTED · 선택한 칸</div>
-            <div class="selected-number" id="selectedSlot">A1</div>
-            <h3>이 칸이 궁금한가요?</h3>
-            <p><strong id="selectedPosition">A행 · 1열</strong> 위치를 골랐어요. 이 지도는 위치를 알려주는 예시라서, 실제 빵과 남은 수량은 실시간 보기에서 확인해 주세요.</p>
-            <div class="status-explain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg><span>재고는 자동으로 표시되지 않아요. 가게 창문(실시간 영상)으로 직접 살펴보는 방식이에요.</span></div>
-            <div class="selection-actions"><a class="btn primary" href="#camera" id="goCameraBtn">실시간 보기에서 확인 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><button type="button" class="btn soft" data-open-settings>진열대 배치 수정</button><span class="minor">진열대 화면에서는 영상을 재생하지 않아요. 실시간 보기를 열 때만 연결해요.</span></div>
-          </article>
-          <article class="panel help-panel"><h3>이렇게 이용해요</h3><div class="help-list"><div class="help-item"><b>01</b> 진열대에서 궁금한 칸 고르기</div><div class="help-item"><b>02</b> 실시간 보기 열기</div><div class="help-item"><b>03</b> 영상으로 빵이 남았는지 확인</div></div></article>
-        </aside>
+          <div class="connecting"><span class="dot wait"></span><span id="connectingText">오븐 예열 중… 영상을 불러오고 있어요</span></div>
+          <div class="live-badge"><i></i>LIVE</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button type="button" class="btn" id="refreshBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>다시 연결</button>
+        <button type="button" class="btn" id="pauseBtn" disabled></button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="fullscreenBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span id="fullscreenLabel">전체 화면</span></button>
       </div>
     </section>
-    <!-- SCREEN 2: 실시간 보기 (상세) -->
-    <section class="page" id="camera" hidden aria-labelledby="cameraTitle">
-      <div class="hero"><div><div class="eyebrow">LIVE WINDOW · 가게 창문</div><h1 id="cameraTitle">가게 창문으로 들여다보기</h1><p>자판기 앞 실시간 영상으로 원하는 빵이 남아 있는지 확인해요. 진열대로 언제든 돌아갈 수 있어요.</p></div><span class="hero-note">창문 너머로 실시간 확인</span></div>
-      <div class="camera-layout">
-        <article class="panel camera-panel">
-          <div class="section-head"><div class="head-title"><span class="head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="m16 10 5-3v10l-5-3"/><circle cx="9.5" cy="12" r="2"/></svg></span><div><h2>자판기 실시간 화면</h2><p>MJPEG 영상 · 눈으로 확인하는 재고</p></div></div><span class="mode-pill" id="videoMode">미리보기</span></div>
-          <div class="viewport" id="viewport" aria-label="실시간 영상 표시 영역">
-            <div class="mock-scene" aria-label="영상 연결 전 자판기 예시 일러스트"><div class="mock-machine" aria-hidden="true"><div class="mock-head">재빵소</div><div class="mock-rack" id="mockRack"></div><div class="mock-base"></div></div><div class="mock-control" aria-hidden="true"><div class="mock-screen"></div><div class="mock-keys"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
-            <img class="live-img" id="liveImg" alt="학교 자판기의 실시간 MJPEG 카메라 영상">
-            <div class="video-ribbon"><span class="dot" id="videoDot"></span><span id="videoStatus">영상 연결 전 예시</span></div>
-            <div class="watermark">디자인 예시 · 실제 카메라 영상이 아니에요</div>
-            <div class="overlay-error" role="alert">잠깐 쉬는 중이에요. 영상을 불러올 수 없어요 — 주소와 서버 연결 상태를 확인해 주세요.</div>
-          </div>
-          <div class="action-row"><button type="button" class="btn primary" data-open-settings>⚙ 영상 연결 설정</button><button type="button" class="btn" id="refreshBtn">↻ 다시 연결</button><span class="spacer"></span><button type="button" class="btn" id="fullscreenBtn">⛶ 전체 화면</button></div>
-          <div class="stream-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg><span><b>영상 안내</b> · 자판기 앞 카메라 화면을 그대로 보여줘요. 재고를 자동으로 세거나 품절을 판정하지는 않아요.</span></div>
-        </article>
-        <aside class="camera-side">
-          <article class="panel camera-info"><span class="overline">YOUR SELECTED SLOT</span><span class="info-badge">선택한 칸 <strong id="cameraSelectedSlot">A1</strong></span><h3>영상을 보면서 찾아보세요</h3><p>지금 고른 칸은 <b id="cameraPosition">A행 · 1열</b>이에요. 영상에서 같은 위치를 찾아 남아 있는 빵을 직접 확인해 주세요.</p><p class="minor">진열대 지도는 영상과 자동으로 맞춰지지 않아요. 카메라 각도에 따라 실제로 보이는 위치가 다를 수 있어요.</p><a href="#slots" class="btn linklike">← 진열대로 돌아가기</a></article>
-          <div class="camera-hint"><strong>데이터 아끼기</strong>실시간 보기를 열 때만 영상을 연결하고, 진열대로 돌아가면 재생을 멈춰서 불필요한 데이터 사용을 줄여요.</div>
-        </aside>
-      </div>
+
+    <section class="notes" aria-label="이용 안내">
+      <div class="note"><span class="note-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="m16 10 5-3v10l-5-3"/></svg></span><div><h3>실시간 영상</h3><p>자판기 앞 카메라 화면을 그대로 보여줘요.</p></div></div>
+      <div class="note"><span class="note-icon peach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><div><h3>눈으로 직접 확인</h3><p>빵 종류나 남은 개수를 자동으로 알려주지 않아요. 영상을 보고 판단해 주세요.</p></div></div>
+      <div class="note"><span class="note-icon apricot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></svg></span><div><h3>데이터 아끼기</h3><p>다른 탭으로 가거나 화면이 꺼지면 영상을 멈추고, 돌아오면 다시 연결해요.</p></div></div>
     </section>
-    <section class="howto" aria-label="이용 방법 요약"><div class="step"><span class="step-number">1</span><div><strong>진열대 확인</strong><p>원하는 칸의 위치를 골라요.</p></div></div><div class="step"><span class="step-number">2</span><div><strong>실시간 보기 열기</strong><p>상단 메뉴나 버튼으로 이동해요.</p></div></div><div class="step"><span class="step-number">3</span><div><strong>영상으로 직접 확인</strong><p>빵이 남았는지 눈으로 봐요.</p></div></div></section>
   </main>
-  <footer><span><strong>재빵소</strong> · <span class="slogan">갓 구운 빵 말고, 갓 확인한 빵.</span></span><span>Raspberry Pi 5 · Brio 300 · MJPEG · Cloudflare Tunnel</span></footer>
+
+  <footer>
+    <span><strong>재빵소</strong> · <span class="slogan">갓 구운 빵 말고, 갓 확인한 빵.</span></span>
+    <span class="footer-right"><span>Raspberry Pi 5 · Brio 300 · MJPEG · Cloudflare Tunnel</span><button type="button" class="text-btn" data-open-settings>영상 주소 설정</button></span>
+  </footer>
 </div>
+
 <dialog id="settingsDialog" aria-labelledby="dialogTitle">
-  <form class="dialog-content" id="settingsForm" novalidate><div class="dialog-head"><div><h2 id="dialogTitle">카메라 · 진열대 설정</h2><p>영상 주소와 예시 진열대 배치를 바꿀 수 있어요.</p></div><button class="close" type="button" id="closeDialog" aria-label="설정 닫기">×</button></div>
+  <form class="dialog-content" id="settingsForm" novalidate>
+    <div class="dialog-head"><div><h2 id="dialogTitle">영상 주소 설정</h2><p>운영자용 설정이에요. 카메라 스트림 주소를 연결해요.</p></div><button class="close" type="button" id="closeDialog" aria-label="설정 닫기">×</button></div>
     <div class="field"><label for="streamUrl">MJPEG 스트리밍 HTTPS 주소</label><input type="url" id="streamUrl" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://camera.example.org/?action=stream"><small>Cloudflare Tunnel에 연결된 실제 MJPEG 엔드포인트를 입력해요. 예시 주소는 실제 서버가 아니에요.</small></div>
-    <div class="two-fields"><div class="field"><label for="rowCount">진열대 행 수</label><input type="number" id="rowCount" min="1" max="6" step="1" value="3"><small>기본 예시: 3행</small></div><div class="field"><label for="colCount">진열대 열 수</label><input type="number" id="colCount" min="1" max="8" step="1" value="4"><small>기본 예시: 4열</small></div></div>
-    <div class="alert">주소는 이 브라우저에만 저장돼요. 비밀번호나 API 토큰을 주소에 넣지 마세요. 실제 운영 전에 학교의 CCTV 설치·공개 및 접근 권한 기준을 꼭 확인해 주세요.</div><p class="validation" id="validation" role="alert" aria-live="polite"></p><div class="dialog-actions"><button type="button" class="btn" id="clearBtn">영상 주소 지우기</button><button type="submit" class="btn primary">설정 저장</button></div>
+    <div class="alert">주소는 이 브라우저에만 저장돼요. 모든 방문자에게 적용하려면 코드의 DEPLOY_STREAM_URL에 넣어 주세요. 비밀번호나 API 토큰은 주소에 넣지 말고, 운영 전에 학교의 CCTV 설치·공개 및 접근 권한 기준을 꼭 확인해 주세요.</div>
+    <p class="validation" id="validation" role="alert" aria-live="polite"></p>
+    <div class="dialog-actions"><button type="button" class="btn" id="clearBtn">영상 주소 지우기</button><button type="submit" class="btn primary">저장하고 연결</button></div>
   </form>
 </dialog>
+
 <script>
 (()=>{
   'use strict';
-  const $=(selector)=>document.querySelector(selector);
+  const $=(s)=>document.querySelector(s);
   const DEPLOY_STREAM_URL=''; // 운영 시 배포 가능한 HTTPS MJPEG 엔드포인트를 입력하세요. 토큰 등 비밀값은 넣지 마세요.
-  const STORE='breadCamStudentDashboard.v2'; // 기존 사용자 설정 유지를 위해 키는 그대로 둡니다.
-  const BRAND='재빵소';
-  const defaults={url:DEPLOY_STREAM_URL,rows:3,cols:4};
-  function load(){try{return {...defaults,...JSON.parse(localStorage.getItem(STORE)||'{}')}}catch{return {...defaults}}}
-  function save(){try{localStorage.setItem(STORE,JSON.stringify(config))}catch{/* local file environment may disable storage */}}
+  const STORE='breadCamStudentDashboard.v2'; // 기존에 저장된 영상 주소를 이어 쓰기 위해 키는 그대로 둡니다.
+  const SLOW_MS=12000;
+
+  function load(){try{const saved=JSON.parse(localStorage.getItem(STORE)||'{}');return {url:typeof saved.url==='string'&&saved.url?saved.url:DEPLOY_STREAM_URL}}catch{return {url:DEPLOY_STREAM_URL}}}
+  function save(){try{localStorage.setItem(STORE,JSON.stringify({url:config.url}))}catch{/* storage may be blocked */}}
   const config=load();
-  const clamp=(n,min,max,fallback)=>Number.isInteger(Number(n))&&Number(n)>=min&&Number(n)<=max?Number(n):fallback;
-  config.rows=clamp(config.rows,1,6,3);config.cols=clamp(config.cols,1,8,4);config.url=typeof config.url==='string'?config.url:'';
-  let selected='A1',currentPage=null,pendingTimer=null,connectedUrl='';
-  const viewport=$('#viewport'),image=$('#liveImg');
-  const traySVG='<svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20h24l-3.8 8H9.8L6 20Z"/><path d="M10 20V9h16v11M13 13h10"/><path d="M13 16h10"/></svg>';
-  const bread=['🍞','🥐','🥖','🥯','🥨','🥐','🍞','🥖','🥯','🍞','🥐','🥨'];
-  function updateSelection(){
-    const row=selected.charAt(0),column=selected.slice(1),position=`${row}행 · ${column}열`;
-    $('#selectedSlot').textContent=selected;$('#selectedPosition').textContent=position;
-    $('#cameraSelectedSlot').textContent=selected;$('#cameraPosition').textContent=position;
+
+  const viewport=$('#viewport'),image=$('#liveImg'),pauseBtn=$('#pauseBtn');
+  let state='idle',pollTimer=null,slowTimer=null,autoPaused=false;
+
+  // 상태별 문구 — '가게 말투' + 실제 상태
+  const CHIP={idle:['','영상 연결 전'],connecting:['wait','오븐 예열 중…'],live:['on','가게 문 열었어요'],paused:['','잠시 멈춤'],error:['fail','잠깐 쉬는 중']};
+  const PLACEHOLDER={
+    idle:{title:'아직 창문이 닫혀 있어요',text:'카메라 영상 주소가 연결되면 이곳에 자판기 앞 화면이 실시간으로 보여요.',label:'영상 주소 설정',action:'settings'},
+    paused:{title:'잠시 멈췄어요',text:'데이터를 아끼려고 영상을 멈춘 상태예요. 다시 보려면 아래 버튼을 눌러 주세요.',label:'다시 보기',action:'resume'},
+    error:{title:'잠깐 쉬는 중이에요',text:'영상을 불러오지 못했어요. 잠시 후 다시 연결하거나, 카메라 서버 상태를 확인해 주세요.',label:'다시 연결',action:'retry'}
+  };
+  const ICON_PAUSE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+  const ICON_PLAY='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M7 5v14l11-7Z"/></svg>';
+
+  function setState(next){
+    state=next;viewport.dataset.state=next;if(next!=='live')viewport.style.aspectRatio='';
+    const [dot,text]=CHIP[next];$('#statusDot').className='dot '+dot;$('#statusText').textContent=text;
+    const ph=PLACEHOLDER[next];
+    if(ph){$('#phTitle').textContent=ph.title;$('#phText').textContent=ph.text;$('#phAction').textContent=ph.label;$('#phAction').dataset.action=ph.action}
+    if(next==='connecting')$('#connectingText').textContent='오븐 예열 중… 영상을 불러오고 있어요';
+    pauseBtn.disabled=next==='idle'||next==='error';
+    pauseBtn.innerHTML=next==='paused'?ICON_PLAY+'다시 보기':ICON_PAUSE+'일시정지';
   }
-  function renderGrid(){
-    const grid=$('#slotGrid');grid.style.setProperty('--cols',String(config.cols));
-    const buttons=[];
-    for(let r=0;r<config.rows;r++)for(let c=1;c<=config.cols;c++){
-      const name=`${String.fromCharCode(65+r)}${c}`;
-      const el=document.createElement('button');el.type='button';el.className='slot';el.dataset.slot=name;
-      el.setAttribute('aria-label',`${name} 칸 위치 선택`);el.setAttribute('aria-pressed',String(name===selected));
-      const badge=document.createElement('span');badge.className='slot-label';badge.textContent=name;
-      const glyph=document.createElement('span');glyph.className='slot-glyph';glyph.innerHTML=traySVG;
-      const copy=document.createElement('strong');copy.textContent=name===selected?'선택됨':'위치 선택';
-      el.append(badge,glyph,copy);buttons.push(el);
-    }
-    grid.replaceChildren(...buttons);
-    $('#gridInfo').textContent=`배치도 예시 · ${config.rows}행 × ${config.cols}열`;
-    const rack=$('#mockRack');rack.style.setProperty('--mock-cols',String(config.cols));rack.style.setProperty('--mock-rows',String(config.rows));
-    rack.replaceChildren(...Array.from({length:config.rows*config.cols},(_,i)=>{const el=document.createElement('div');el.className='sample-slot';const tag=document.createElement('small');tag.textContent=String.fromCharCode(65+Math.floor(i/config.cols))+(i%config.cols+1);const food=document.createElement('span');food.className='food';food.textContent=bread[i%bread.length];el.append(tag,food);return el}));
-    updateSelection();
+  function stopStream(){clearInterval(pollTimer);clearTimeout(slowTimer);image.onload=null;image.onerror=null;image.removeAttribute('src')}
+  function goLive(){
+    clearInterval(pollTimer);clearTimeout(slowTimer);
+    // 창문 비율을 실제 카메라 영상 비율에 맞춰 위아래 검은 여백을 없앱니다.
+    if(image.naturalWidth&&image.naturalHeight)viewport.style.aspectRatio=`${image.naturalWidth} / ${image.naturalHeight}`;
+    if(state!=='live')setState('live');
   }
-  $('#slotGrid').addEventListener('click',e=>{const btn=e.target.closest('button[data-slot]');if(!btn)return;selected=btn.dataset.slot;renderGrid()});
-  // 상태 문구는 '가게 말투' + 실제 상태를 함께 보여줍니다.
-  function updateCameraStatus(mode,message){
-    const states={offline:'',waiting:'wait',online:'on',error:'fail'},css=states[mode]||'';
-    $('#videoDot').className='dot '+css;$('#videoStatus').textContent=mode==='online'?'가게 문 열었어요 · 실시간 영상':message;
-    $('#headerDot').className='dot '+css;$('#headerStatus').textContent=currentPage==='slots'?'실시간 보기에서 확인':message;
-    $('#videoMode').textContent=mode==='online'?'실시간':mode==='waiting'?'연결 중':mode==='error'?'연결 오류':'미리보기';
+  function connect(){
+    stopStream();autoPaused=false;
+    const url=String(config.url||'').trim();
+    if(!url){setState('idle');return}
+    setState('connecting');
+    image.onload=goLive;
+    image.onerror=()=>{stopStream();setState('error')};
+    image.src=url;
+    // MJPEG는 브라우저에 따라 load 이벤트가 늦거나 없을 수 있어, 첫 프레임이 그려졌는지도 함께 확인합니다.
+    pollTimer=setInterval(()=>{if(image.naturalWidth>0)goLive()},500);
+    slowTimer=setTimeout(()=>{if(state==='connecting')$('#connectingText').textContent='응답이 조금 늦어요… 계속 연결하는 중'},SLOW_MS);
   }
-  function stopStream(){clearTimeout(pendingTimer);image.onload=null;image.onerror=null;image.removeAttribute('src');connectedUrl='';viewport.classList.remove('is-streaming','has-error');updateCameraStatus('offline','문 열기 전 · 영상 대기')}
-  function connectStream(){
-    if(currentPage!=='camera')return;
-    stopStream();connectedUrl=String(config.url||'').trim();
-    if(!connectedUrl)return;
-    updateCameraStatus('waiting','오븐 예열 중… 연결 중');
-    image.onload=()=>{clearTimeout(pendingTimer);viewport.classList.remove('has-error');updateCameraStatus('online','가게 문 열었어요')};
-    image.onerror=()=>{clearTimeout(pendingTimer);viewport.classList.remove('is-streaming');viewport.classList.add('has-error');updateCameraStatus('error','잠깐 쉬는 중 · 연결 오류')};
-    viewport.classList.add('is-streaming');image.src=connectedUrl;
-    pendingTimer=setTimeout(()=>{if($('#videoMode').textContent==='연결 중')updateCameraStatus('waiting','오븐 예열 중… 응답 확인')},10000);
-  }
-  function showPage(){
-    const page=location.hash==='#camera'?'camera':'slots';
-    $('#slots').hidden=page!=='slots';$('#camera').hidden=page!=='camera';
-    document.querySelectorAll('[data-nav]').forEach(link=>{if(link.dataset.nav===page)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current')});
-    document.title=page==='slots'?`${BRAND} | 진열대`:`${BRAND} | 실시간 보기`;
-    if(currentPage!==page){currentPage=page;if(page==='camera')connectStream();else stopStream()}
-    else if(page==='slots')$('#headerStatus').textContent='실시간 보기에서 확인';
-    window.scrollTo({top:0,behavior:'instant'});
-  }
-  window.addEventListener('hashchange',showPage);
-  function openSettings(){
-    $('#streamUrl').value=config.url;$('#rowCount').value=config.rows;$('#colCount').value=config.cols;$('#validation').textContent='';
-    if(!$('#settingsDialog').open)$('#settingsDialog').showModal();
-  }
+  function pause(auto=false){stopStream();autoPaused=auto;setState('paused')}
+
+  $('#phAction').addEventListener('click',e=>{const a=e.currentTarget.dataset.action;if(a==='settings')openSettings();else connect()});
+  $('#refreshBtn').addEventListener('click',()=>{if(!config.url){openSettings();return}connect()});
+  pauseBtn.addEventListener('click',()=>{if(state==='paused')connect();else pause()});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){if(state==='live'||state==='connecting')pause(true)}
+    else if(autoPaused&&state==='paused')connect();
+  });
+  window.addEventListener('pagehide',stopStream);
+
+  $('#fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(viewport.requestFullscreen)await viewport.requestFullscreen();else alert('이 브라우저에서는 전체 화면을 지원하지 않아요.')}catch{alert('전체 화면 전환을 사용할 수 없어요.')}});
+  document.addEventListener('fullscreenchange',()=>{$('#fullscreenLabel').textContent=document.fullscreenElement?'전체 화면 닫기':'전체 화면'});
+
+  const dialog=$('#settingsDialog');
+  function openSettings(){$('#streamUrl').value=config.url;$('#validation').textContent='';if(!dialog.open)dialog.showModal()}
   document.querySelectorAll('[data-open-settings]').forEach(el=>el.addEventListener('click',openSettings));
-  $('#closeDialog').addEventListener('click',()=>$('#settingsDialog').close());
-  $('#settingsDialog').addEventListener('click',e=>{if(e.target===$('#settingsDialog'))$('#settingsDialog').close()});
+  $('#closeDialog').addEventListener('click',()=>dialog.close());
+  dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
   $('#settingsForm').addEventListener('submit',e=>{
-    e.preventDefault();const url=$('#streamUrl').value.trim(),rows=Number($('#rowCount').value),cols=Number($('#colCount').value);
+    e.preventDefault();const url=$('#streamUrl').value.trim();
     if(url){let valid=true;try{const test=new URL(url);const local=['localhost','127.0.0.1','[::1]'].includes(test.hostname);valid=(test.protocol==='https:'||(local&&test.protocol==='http:'))&&!test.username&&!test.password}catch{valid=false}
       if(!valid){$('#validation').textContent='유효한 HTTPS 주소를 입력해 주세요. 로컬 테스트에는 http://localhost를 사용할 수 있어요.';return}}
-    if(!Number.isInteger(rows)||rows<1||rows>6||!Number.isInteger(cols)||cols<1||cols>8){$('#validation').textContent='행은 1~6, 열은 1~8 범위의 정수로 입력해 주세요.';return}
-    config.url=url;config.rows=rows;config.cols=cols;selected='A1';save();renderGrid();$('#settingsDialog').close();
-    if(currentPage==='camera')connectStream();else stopStream();
+    config.url=url;save();dialog.close();connect();
   });
-  $('#clearBtn').addEventListener('click',()=>{config.url='';save();$('#streamUrl').value='';$('#settingsDialog').close();stopStream()});
-  $('#refreshBtn').addEventListener('click',()=>{if(!config.url){openSettings();return}connectStream()});
-  $('#fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(viewport.requestFullscreen)await viewport.requestFullscreen();else alert('이 브라우저에서는 전체 화면을 지원하지 않아요.')}catch{alert('전체 화면 전환을 사용할 수 없어요.')}});
-  document.addEventListener('fullscreenchange',()=>{$('#fullscreenBtn').textContent=document.fullscreenElement?'⛶ 전체 화면 닫기':'⛶ 전체 화면'});
-  renderGrid();showPage();
+  // 이 브라우저에 저장한 주소만 지우고, 배포 주소(DEPLOY_STREAM_URL)가 있으면 그걸로 돌아갑니다.
+  $('#clearBtn').addEventListener('click',()=>{try{localStorage.removeItem(STORE)}catch{}config.url=DEPLOY_STREAM_URL;$('#streamUrl').value=config.url;dialog.close();connect()});
+
+  setState('idle');connect();
 })();
 </script>
 </body>
