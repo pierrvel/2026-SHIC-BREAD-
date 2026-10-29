@@ -22,7 +22,7 @@ import numpy as np
 
 PAGE = '''<!doctype html><html lang="ko"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>쉬는빵 · 카메라 연결 확인</title>
+<title>재빵소 · 카메라 연결 확인</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#111827;color:#f3f4f6;font:16px system-ui,sans-serif}
 main{max-width:1600px;margin:auto;padding:24px}h1{font-size:24px;margin:0 0 12px}
@@ -583,7 +583,7 @@ class PublicStreamHandler(PreviewHandler):
             self.stream_video()
         elif path == '/api/health':
             state = self.server.stream.health()
-            public = {key: state[key] for key in ('sample', 'width', 'height', 'target_fps', 'fps', 'frame_age_seconds', 'live', 'clients')}
+            public = {key: state[key] for key in ('sample', 'width', 'height', 'target_fps', 'fps', 'frame_age_seconds', 'live', 'clients', 'stream_version')}
             public['read_only'] = True
             self.respond(200, json.dumps(public).encode())
         else:

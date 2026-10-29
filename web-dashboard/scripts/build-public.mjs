@@ -13,5 +13,5 @@ if (env.VITE_CAMERA_STREAM_URL) {
 console.log('Building the camera-only Cloudflare Pages site: no Firebase, inventory, or mock data.');
 if (!env.VITE_CAMERA_STREAM_URL) console.log('Public camera URL is not configured; viewers can enter an address in the camera page.');
 const result = spawnSync('npm', ['run', 'build', '--', '--mode', 'camera'], { cwd: root, env, stdio: 'inherit' });
-if (result.status === 0) await writeFile(new URL('../dist/public-build.json', import.meta.url), JSON.stringify({ hosting: 'cloudflare-pages', mode: 'camera', mockMode: false, inventoryEnabled: false, cameraConfigured: !!env.VITE_CAMERA_STREAM_URL }));
+if (result.status === 0) await writeFile(new URL('../dist/public-build.json', import.meta.url), JSON.stringify({ hosting: 'cloudflare-pages', brand: 'jaebbangso', mode: 'camera', mockMode: false, inventoryEnabled: false, cameraConfigured: !!env.VITE_CAMERA_STREAM_URL }));
 process.exit(result.status ?? 1);

@@ -1,49 +1,36 @@
-"""Verify portable HTML with no server, storage access or native form submission."""
+"""Standalone Jaebbangso HTML with an opaque origin and blocked localStorage."""
+import base64
 import os
 from pathlib import Path
-
 from playwright.sync_api import expect, sync_playwright
 
-root = Path(__file__).resolve().parents[2]
-html = (root / 'index.html').read_text(encoding='utf-8')
-executable = os.getenv('BREAD_CHROMIUM_PATH')
-
-with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(**({'executable_path': executable} if executable else {}), headless=True)
+html = (Path(__file__).resolve().parents[2] / 'index.html').read_text()
+png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aKJkAAAAASUVORK5CYII=')
+with sync_playwright() as p:
+    browser = p.chromium.launch(executable_path=os.getenv('BREAD_CHROMIUM_PATH', '/usr/bin/chromium'), headless=True)
     page = browser.new_page(viewport={'width': 1440, 'height': 1000})
     errors, requests = [], []
-    page.on('pageerror', lambda error: errors.append(str(error)))
-    page.on('request', lambda request: requests.append(request.url))
-    page.set_content('<iframe id="preview" title="대시보드 미리보기" sandbox="allow-scripts allow-downloads" style="position:fixed;inset:0;border:0;width:100%;height:100%"></iframe>')
+    page.on('pageerror', lambda e: errors.append(str(e)))
+    page.on('request', lambda r: requests.append(r.url))
+    page.route('https://preview-camera.invalid/**', lambda r: r.fulfill(body=png, content_type='image/png'))
+    page.set_content('<iframe id="preview" sandbox="allow-scripts" style="position:fixed;inset:0;border:0;width:100%;height:100%"></iframe>')
     page.locator('#preview').evaluate('(frame, html) => { frame.srcdoc = html; }', html)
     frame = page.frame_locator('#preview')
-    expect(frame.locator('.slot-card')).to_have_count(6)
-    expect(frame.locator('.slot-card.stocked')).to_have_count(4)
-    expect(frame.locator('.slot-card.soldout')).to_have_count(2)
-    frame.get_by_role('button', name='재고 있는 칸', exact=True).click()
-    expect(frame.locator('.slot-card')).to_have_count(4)
-    print('PASS standalone HTML renders student inventory and filter without a server')
-
-    frame.get_by_role('button', name='관리자', exact=True).click()
-    expect(frame.locator('svg rect')).to_have_count(6)
-    expect(frame.get_by_text('원본 600 × 480px', exact=False)).to_be_visible()
-    assert frame.locator('.roi-preview img').evaluate('image => image.complete && image.naturalWidth === 600')
-    frame.get_by_role('slider').fill('255')
-    frame.get_by_role('button', name='설정 저장하기').click()
-    expect(frame.get_by_role('status')).to_contain_text('이 미리보기에 적용')
-    expect(frame.get_by_role('status')).to_contain_text('창을 닫으면 초기화')
-    frame.get_by_role('button', name='슬롯 지도', exact=True).click()
-    expect(frame.locator('.slot-card.soldout')).to_have_count(6)
-    frame.get_by_role('button', name='관리자', exact=True).click()
-    frame.get_by_role('button', name='데모 설정 초기화').click()
-    expect(frame.get_by_role('slider')).to_have_value('35')
-    print('PASS embedded administrator photo, in-memory settings and reset with storage denied')
-
-    frame.get_by_role('button', name='슬롯 지도', exact=True).click()
-    expect(frame.locator('.slot-card.stocked')).to_have_count(4)
-    page.set_viewport_size({'width': 375, 'height': 900})
-    assert frame.locator('html').evaluate('html => html.scrollWidth <= window.innerWidth')
+    expect(frame.get_by_role('heading', name='빵 남았나, 창문으로 보고 가요')).to_be_visible()
+    expect(frame.locator('#glass')).to_have_attribute('data-state', 'idle')
+    assert not requests, requests
+    frame.locator('#shadeBtn').click()
+    frame.get_by_label('MJPEG 스트리밍 HTTPS 주소').fill('https://preview-camera.invalid/?action=stream')
+    frame.get_by_role('button', name='저장하고 연결').click()
+    expect(frame.locator('#glass')).to_have_attribute('data-state', 'live')
+    expect(frame.locator('#connectionNotice')).to_contain_text('현재 창에만')
+    frame.locator('#pauseBtn').click()
+    expect(frame.locator('#glass')).to_have_attribute('data-state', 'paused')
+    frame.locator('[data-open-settings]').click(); frame.locator('#clearBtn').click()
+    expect(frame.locator('#glass')).to_have_attribute('data-state', 'idle')
+    page.set_viewport_size({'width':320,'height':900})
+    assert frame.locator('html').evaluate('e => e.scrollWidth <= innerWidth')
     assert not errors, errors
-    assert not [url for url in requests if url.startswith(('http:', 'https:'))], requests
-    print('PASS mobile preview, no JavaScript errors, no external resource requests')
+    assert all(u.startswith('https://preview-camera.invalid/') for u in requests), requests
+    print('PASS portable Jaebbangso: idle without camera, real image binding, blocked storage, pause/reset, 320px layout, no bundled inventory or external dependencies')
     browser.close()

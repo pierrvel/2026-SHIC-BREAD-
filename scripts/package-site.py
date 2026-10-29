@@ -1,5 +1,6 @@
 """Package the verified production output for Cloudflare Pages Direct Upload."""
 import json
+from shutil import copyfile
 from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
@@ -9,9 +10,9 @@ manifest = directory / 'public-build.json'
 if not manifest.exists():
     raise SystemExit('Run npm --prefix web-dashboard run build:public first.')
 state = json.loads(manifest.read_text())
-if state.get('hosting') != 'cloudflare-pages' or state.get('mode') != 'camera' or state.get('mockMode') is not False or state.get('inventoryEnabled') is not False:
+if state.get('brand') != 'jaebbangso' or state.get('hosting') != 'cloudflare-pages' or state.get('mode') != 'camera' or state.get('mockMode') is not False or state.get('inventoryEnabled') is not False:
     raise SystemExit('Only a verified production build can be packaged.')
-archive = root / 'school-bread-site.zip'
+archive = root / 'jaebbangso-site.zip'
 with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as bundle:
     for path in sorted(directory.rglob('*')):
         if not path.is_file():
@@ -26,4 +27,5 @@ with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as bundle:
 with ZipFile(archive) as bundle:
     if bundle.testzip() is not None or 'index.html' not in bundle.namelist():
         raise SystemExit('Production ZIP verification failed.')
+copyfile(archive, root / 'school-bread-site.zip')
 print(f'Created Cloudflare Pages Direct Upload archive: {archive.name}')

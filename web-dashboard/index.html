@@ -1,20 +1,196 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#fffaf4" />
-    <meta name="description" content="빵살핌에서 학교 자판기의 슬롯 위치, 상품 사진과 실시간 카메라를 확인하세요." />
-    <title>빵살핌 | 자판기 슬롯 지도</title>
-  </head>
-  <body>
-    <div id="root">
-      <section style="max-width:560px;margin:80px auto;padding:32px;font-family:system-ui,sans-serif;line-height:1.8;color:#243d33;background:#fafbf8;border:1px solid #d8e5d8;border-radius:16px">
-        <h1>빵살핌</h1>
-        <p>자판기 화면을 불러오는 중입니다.</p>
-        <noscript><p>버튼과 실시간 재고를 사용하려면 JavaScript를 허용해 주세요.</p></noscript>
-      </section>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f4a3e">
+  <meta name="description" content="재빵소 — 학교 빵 자판기 앞 카메라를 실시간으로 보여줘요. 빵 남았나, 창문으로 보고 가요.">
+  <meta property="og:title" content="재빵소 · 빵 남았나, 창문으로 보고 가요">
+  <meta property="og:description" content="갓 구운 빵 말고, 갓 확인한 빵. 학교 빵 자판기 앞 실시간 카메라.">
+  <meta property="og:type" content="website">
+  <title>재빵소</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect x='18' y='38' width='84' height='72' rx='16' fill='%23FBDCC4'/%3E%3Cpath d='M12 34Q12 24 22 24H98Q108 24 108 34V46H12Z' fill='%23F29E74'/%3E%3Ccircle cx='60' cy='82' r='20' fill='%23E3F4EA'/%3E%3Cpath d='M44 94C44 70 76 70 76 94Z' fill='%23E8A06A'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=Gowun+Dodum&family=Jua&family=Nanum+Pen+Script&display=swap">
+  <style>
+    /* 재빵소 · 가게 앞 — 회벽 크림 · 간판 초록 · 금박 · 나무 팻말 · 차양 */
+    :root{color-scheme:light;
+      --wall:#f4ebdd;--ink:#2b3a33;--body:#34413a;--muted:#5e5446;--line:#c9b795;
+      --fascia:#2f4a3e;--fascia-dark:#1f3329;--gold:#e7c987;--gold-text:#f3d9a4;--gold-line:#c99a4a;
+      --wood:#8e5b34;--wood-dark:#6e4426;--wood-text:#fff4e0;
+      --awning:#e07f55;--awning-light:#fbebd6;--shade:#f1e3c8;--shade-line:#e7d3b0;--cream:#fff8ec;
+      --slate:#33413b;--chalk:#f3f0e6;--chalk-yellow:#f4d774;
+      --sign-font:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+      --letter-font:"Gowun Batang","AppleMyungjo","Batang",serif;
+      --chalk-font:"Nanum Pen Script","Gowun Dodum",cursive}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--wall);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
+    a{color:inherit;text-decoration:none}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}
+    a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--gold-line);outline-offset:3px}
+    .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+
+    /* 간판 + 차양 */
+    .fascia{background:var(--fascia)}
+    .fascia .wrap{min-height:84px;display:flex;align-items:center;justify-content:space-between;gap:10px 20px;flex-wrap:wrap;padding-block:14px}
+    .brand{display:flex;align-items:center;gap:14px}.brand svg{width:52px;height:52px;flex:none}
+    .brand b{font-family:var(--sign-font);font-weight:400;font-size:40px;line-height:1;color:var(--gold-text);letter-spacing:1px}
+    .fascia-note{font-family:var(--letter-font);font-weight:700;font-size:15px;color:var(--gold);letter-spacing:2px}
+    .awning{display:block;width:100%;height:40px}
+
+    /* 진열창 */
+    main.wrap{padding-top:30px;padding-bottom:40px}
+    .window-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+    h1{margin:0 0 30px;flex:1;min-width:0;font-family:var(--sign-font);font-weight:400;font-size:clamp(28px,4vw,46px);line-height:1.2;color:var(--fascia);letter-spacing:-.5px}
+    .sign{position:relative;z-index:2;flex:none;display:flex;flex-direction:column;align-items:center;margin:0 28px -16px 0}
+    .sign svg{display:block;width:160px;height:46px}
+    .sign-board{margin-top:-4px;min-width:182px;padding:12px 10px 14px;background:var(--wood);border-radius:8px;box-shadow:inset 0 0 0 3px var(--wood-dark),0 10px 16px rgba(60,40,20,.28);text-align:center;transform:rotate(-3deg);transform-origin:50% 0;transition:transform .5s cubic-bezier(.3,1.6,.5,1)}
+    .sign-board.swing{transform:rotate(3deg)}
+    .sign-title{display:block;font-family:var(--sign-font);font-size:34px;line-height:1.1;color:var(--wood-text);white-space:nowrap}
+    .sign-sub{display:block;margin-top:4px;font-size:14px;color:#fbe7c8}
+    .frame{position:relative;background:var(--fascia);padding:18px 18px 46px;border-radius:10px;box-shadow:0 3px 0 var(--fascia-dark),0 26px 44px rgba(60,40,20,.2)}
+    .glass{position:relative;aspect-ratio:16/9;overflow:hidden;border:2px solid var(--gold-line);border-radius:3px;background:#1d2623;isolation:isolate}
+    .glass:fullscreen{aspect-ratio:auto;border:0;border-radius:0;background:#131b18}
+    .live-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none}
+    .glass[data-state="connecting"] .live-img,.glass[data-state="live"] .live-img{display:block}
+    .dim{display:none;position:absolute;inset:0;z-index:2;background:rgba(20,28,25,.55);align-items:center;justify-content:center;font-family:var(--letter-font);font-weight:700;font-size:18px;color:var(--gold)}
+    .glass[data-state="connecting"] .dim{display:flex}
+    /* 금박 문구는 영상을 가리지 않도록 창틀 아래에 새겨요 */
+    .decal{position:absolute;left:22px;bottom:12px;font-family:var(--letter-font);font-weight:700;font-size:17px;color:#e9c273;letter-spacing:1px}
+    /* 블라인드: 멈춤 · 오류 · 주소 없음 */
+    .shade{position:absolute;inset:0;z-index:3;background:repeating-linear-gradient(180deg,var(--shade) 0 22px,var(--shade-line) 22px 24px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px 24px 44px;text-align:center}
+    .glass[data-state="connecting"] .shade,.glass[data-state="live"] .shade{display:none}
+    .shade h2{margin:0;font-family:var(--sign-font);font-weight:400;font-size:clamp(24px,3vw,38px);color:var(--wood-dark)}
+    .shade p{margin:0;max-width:420px;font-size:16px;line-height:1.6;color:#5b4632}
+    .shade-cord{position:absolute;bottom:6px;left:50%;width:14px;height:28px;margin-left:-7px}
+
+    /* 버튼 */
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:22px}.controls .spacer{flex:1}
+    .btn{min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border:2px solid var(--fascia);border-radius:6px;background:var(--cream);color:var(--fascia);font-size:16px;transition:background .15s,transform .15s}
+    .btn:hover:not(:disabled){background:#fff1da;transform:translateY(-1px)}
+    .btn.solid{background:var(--fascia);color:var(--cream)}.btn.solid:hover:not(:disabled){background:#264036}
+    .btn svg{width:18px;height:18px;flex:none}
+
+    /* 안내 + 입간판 */
+    .about{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-top:34px}
+    .about-text{flex:999 1 420px;max-width:620px;display:flex;flex-direction:column;gap:12px}
+    .about-text p{margin:0;font-size:18px;line-height:1.8;color:var(--body)}.about-text p.small{font-size:15px;line-height:1.7;color:var(--muted)}
+    .aboard{flex:1 1 240px;display:flex;justify-content:center}
+    .aboard div{width:250px;padding:18px 20px 20px;background:var(--slate);border:10px solid #9a6a40;border-radius:6px;transform:rotate(1.5deg);box-shadow:0 12px 20px rgba(60,40,20,.2);font-family:var(--chalk-font);color:var(--chalk);text-align:center}
+    .aboard strong{display:block;font-weight:400;font-size:26px;color:var(--chalk-yellow)}.aboard span{display:block;margin-top:6px;font-size:32px;line-height:1.15}
+
+    footer.wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 20px;padding-top:6px;padding-bottom:24px;font-size:14px;color:var(--muted)}
+    footer.wrap>span{padding-top:10px}
+    .footer-line{max-width:1072px;margin:0 auto;border-top:1px dashed var(--line)}
+    .text-btn{min-height:44px;border:0;background:none;padding:0;color:var(--wood-dark);font-size:14px;text-decoration:underline;text-underline-offset:4px}
+
+    /* 카메라 설정 (운영자용) */
+    dialog{border:0;border-radius:10px;width:min(500px,calc(100vw - 32px));max-height:calc(100vh - 44px);padding:0;overflow:auto;color:var(--ink);background:var(--cream);box-shadow:0 0 0 6px var(--fascia),0 26px 60px rgba(20,30,25,.4)}
+    dialog::backdrop{background:rgba(28,40,32,.5);backdrop-filter:blur(2px)}
+    .dialog-content{padding:24px}.dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
+    .dialog-head h2{margin:0;font-family:var(--sign-font);font-weight:400;font-size:26px;color:var(--fascia)}.dialog-head p{margin:4px 0 0;font-size:13px;color:var(--muted)}
+    .close{width:44px;height:44px;flex:none;border:2px solid var(--fascia);border-radius:6px;background:transparent;color:var(--fascia);font-size:22px;line-height:1}
+    .field label{display:block;margin-bottom:8px;font-size:14px;font-weight:700}
+    .field input{width:100%;min-height:46px;padding:11px 12px;border:2px solid #d8c9ab;border-radius:6px;background:#fff;color:var(--ink);font-size:14px}
+    .field small{display:block;margin-top:7px;font-size:12px;line-height:1.65;color:var(--muted)}
+    .notice{margin-top:16px;padding:12px 14px;border:1px dashed var(--line);border-radius:6px;font-size:12px;line-height:1.7;color:#5b4632}
+    .validation{min-height:18px;margin:10px 0;font-size:13px;color:#a33a2a}
+    .dialog-actions{display:flex;gap:9px;justify-content:space-between;flex-wrap:wrap}
+
+    .stream-notice{margin:16px 0 0;font-size:14px;line-height:1.7;color:var(--muted)}
+    .sample-badge{display:block;margin-bottom:10px;color:var(--gold-text);font-size:13px}
+    [hidden]{display:none!important}
+    .glass:fullscreen{width:100%;height:100%;aspect-ratio:auto!important}
+    @media(max-width:720px){
+      .fascia .wrap{min-height:70px}.brand svg{width:42px;height:42px}.brand b{font-size:32px}.fascia-note{font-size:12px;letter-spacing:1px}
+      .awning{height:30px}
+      main.wrap{padding-top:22px}
+      h1{font-size:26px;margin-bottom:20px}
+      .sign{margin:0 4px -8px 0}.sign svg{width:120px;height:36px}.sign-board{min-width:128px;padding:9px 10px 10px}.sign-title{font-size:23px}.sign-sub{font-size:12px}
+      .frame{padding:9px 9px 34px;border-radius:8px}.decal{left:12px;bottom:8px;font-size:13px}
+      .glass{aspect-ratio:4/3}
+      .shade{gap:8px;padding:20px 16px 40px}.shade p{font-size:14px}
+      .controls .btn{flex:1 1 0;padding:10px 6px;font-size:14px;gap:6px;white-space:nowrap}.controls .btn svg{display:none}.controls .spacer{display:none}
+      .about-text p{font-size:16px}
+    }
+    @media(max-width:380px){.fascia-note{display:none}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
+  </style>
+</head>
+<body>
+<header class="fascia">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="재빵소 처음 화면">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><rect x="18" y="38" width="84" height="72" rx="16" fill="#FBDCC4"/><path d="M36 24H60V44A12 12 0 0 1 36 44Z" fill="#FFF8EF" stroke="#F29E74" stroke-width="4" stroke-linejoin="round"/><path d="M84 24H98Q108 24 108 34V44A12 12 0 0 1 84 44Z" fill="#FFF8EF" stroke="#F29E74" stroke-width="4" stroke-linejoin="round"/><path d="M12 34Q12 24 22 24H36V44A12 12 0 0 1 12 44Z" fill="#F29E74"/><path d="M60 24H84V44A12 12 0 0 1 60 44Z" fill="#F29E74"/><circle cx="60" cy="82" r="20" fill="#E3F4EA" stroke="#FFF8EF" stroke-width="5"/><path d="M47 90C47 73 73 73 73 90Q73 93 70 93H50Q47 93 47 90Z" fill="#E8A06A"/></svg>
+      <b>재빵소</b>
+    </a>
+    <span class="fascia-note">우리 학교 빵 자판기 앞</span>
+  </div>
+</header>
+<svg class="awning" aria-hidden="true">
+  <defs><pattern id="awning" width="56" height="40" patternUnits="userSpaceOnUse"><path d="M0 0H28V22A14 14 0 0 1 0 22Z" fill="#E07F55"/><path d="M28 0H56V22A14 14 0 0 1 28 22Z" fill="#FBEBD6"/></pattern></defs>
+  <rect width="100%" height="100%" fill="url(#awning)"/>
+</svg>
+
+<main class="wrap">
+  <section aria-labelledby="pageTitle">
+    <div class="window-top">
+      <h1 id="pageTitle">빵 남았나, 창문으로 보고 가요</h1>
+      <div class="sign" role="status" aria-live="polite">
+        <svg viewBox="0 0 160 46" aria-hidden="true"><path d="M22 46L80 5L138 46" stroke="#5B4632" stroke-width="2" fill="none"/><circle cx="80" cy="5" r="4.5" fill="#C99A4A"/></svg>
+        <div class="sign-board" id="signBoard"><span class="sign-title" id="signTitle">개업 준비중</span><span class="sign-sub" id="signSub">카메라 연결 전</span></div>
+      </div>
     </div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+    <div class="frame">
+      <span class="sample-badge" id="sampleBadge" hidden>합성 테스트 영상 · 실제 카메라 아님</span>
+      <div class="glass" id="glass" data-state="idle">
+        <img class="live-img" id="liveImg" alt="학교 빵 자판기 앞 실시간 카메라 영상">
+        <div class="dim" id="dimText">영상 불러오는 중…</div>
+                <div class="shade">
+          <h2 id="shadeTitle">아직 개업 전이에요</h2>
+          <p id="shadeText">카메라 영상 주소가 연결되면 이 창문으로 자판기 앞이 보여요.</p>
+          <button type="button" class="btn solid" id="shadeBtn" data-action="settings">카메라 설정</button>
+          <svg class="shade-cord" viewBox="0 0 20 40" aria-hidden="true"><path d="M10 0V26" stroke="#8E5B34" stroke-width="2"/><circle cx="10" cy="32" r="6" fill="none" stroke="#8E5B34" stroke-width="2.5"/></svg>
+        </div>
+      </div>
+      <span class="decal" aria-hidden="true">갓 구운 빵 말고, 갓 확인한 빵</span>
+    </div>
+
+    <p id="connectionNotice" class="stream-notice" role="status" hidden></p>
+    <div class="controls">
+      <button type="button" class="btn" id="refreshBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>다시 연결</button>
+      <button type="button" class="btn" id="pauseBtn" disabled></button>
+      <span class="spacer"></span>
+      <button type="button" class="btn solid" id="fullscreenBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span id="fullscreenLabel">크게 보기</span></button>
+    </div>
+  </section>
+
+  <section class="about" aria-label="이용 안내">
+    <div class="about-text">
+      <p>재빵소는 자판기 앞에 달린 카메라 화면을 그대로 보여줘요. 빵이 몇 개 남았는지 세어 주지는 않으니, 창문 너머로 직접 보고 판단해 주세요.</p>
+      <p class="small">다른 탭으로 넘어가면 영상을 잠깐 멈춰 데이터를 아끼고, 돌아오면 다시 이어서 보여 드려요.</p>
+    </div>
+    <div class="aboard" aria-hidden="true"><div><strong>오늘의 안내</strong><span>남은 개수는<br>눈으로 확인!</span></div></div>
+  </section>
+</main>
+
+<div class="footer-line"></div>
+<footer class="wrap">
+  <span>재빵소 · 우리 학교 빵 자판기 앞 카메라</span>
+  <button type="button" class="text-btn" data-open-settings>카메라 설정</button>
+</footer>
+
+<dialog id="settingsDialog" aria-labelledby="dialogTitle">
+  <form class="dialog-content" id="settingsForm" novalidate>
+    <div class="dialog-head"><div><h2 id="dialogTitle">카메라 설정</h2><p>운영자용이에요. 자판기 카메라 스트림 주소를 연결해요.</p></div><button class="close" type="button" id="closeDialog" aria-label="설정 닫기">×</button></div>
+    <div class="field"><label for="streamUrl">MJPEG 스트리밍 HTTPS 주소</label><input type="url" id="streamUrl" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://camera.example.org/?action=stream"><small>Cloudflare Tunnel에 연결된 실제 MJPEG 엔드포인트를 입력해요. 예시 주소는 실제 서버가 아니에요.</small></div>
+    <p id="cameraDetails" class="notice" hidden></p><div class="notice">주소는 이 브라우저에만 저장돼요. 모든 방문자에게 적용하려면 Cloudflare의 VITE_CAMERA_STREAM_URL에 등록한 뒤 다시 배포해 주세요. 비밀번호나 API 토큰은 주소에 넣지 말고, 운영 전에 학교의 CCTV 설치·공개 및 접근 권한 기준을 꼭 확인해 주세요.</div>
+    <p class="validation" id="validation" role="alert" aria-live="polite"></p>
+    <div class="dialog-actions"><button type="button" class="btn" id="clearBtn">저장한 주소 지우기</button><button type="submit" class="btn solid">저장하고 연결</button></div>
+  </form>
+</dialog>
+
+<script type="module" src="/src/shopfront.js"></script>
+</body>
 </html>

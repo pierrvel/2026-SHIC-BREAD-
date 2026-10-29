@@ -13,7 +13,7 @@ try {
   if (error.code !== 'ENOENT') throw error;
 }
 
-const html = await readFile(source, 'utf8');
+const html = (await readFile(source, 'utf8')).replace(/[ \t]+$/gm, '');
 if (/<script\b[^>]*\bsrc\s*=|<link\b[^>]*\brel=["']stylesheet/i.test(html)) {
   throw new Error('Preview still requires external scripts or styles.');
 }
